@@ -150,6 +150,7 @@
 
   function beginGame() {
     $('menu').hidden = true; $('endScreen').hidden = true; $('gameScreen').hidden = false;
+    $('pauseOverlay').hidden = true;
     state='playing'; wave=1; quota=10; kills=0; credits=0; zombies=[]; bullets=[]; pickups=[]; effects=[]; survivor=null;
     worldTime=0; level=1; xp=0; xpNext=10; rescueTimer=45; autoAim=false; upgradeOpen=false; bombCount=1; airstrikeCount=0; insideBuilding=null;
     const c = selectedChar();
@@ -585,7 +586,7 @@
   }
 
   function endGame() {
-    if(state==='gameover')return;state='gameover';save.bestWave=Math.max(save.bestWave,wave);saveNow();
+    if(state==='gameover')return;state='gameover';$('pauseOverlay').hidden=true;save.bestWave=Math.max(save.bestWave,wave);saveNow();
     $('endTitle').textContent='SIGNAL LOST';$('endSummary').textContent='You reached wave '+wave+', cleared '+kills+' infected, and earned '+credits+' supplies. Best wave: '+save.bestWave+'.';
     $('gameScreen').hidden=true;$('endScreen').hidden=false;
   }
@@ -852,14 +853,34 @@
     ctx.fillStyle='#e6e0ca';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('WASD · MOVE     E · LOOT BIN / EXIT',w/2,h-20);
   }
 
+  let resumeState='playing';
+  function pauseGame() {
+    if(state!=='playing'&&state!=='prep')return;
+    resumeState=state;state='paused';keys={};touch={};pointer.down=false;
+    $('pauseOverlay').hidden=false;
+  }
+  function continueGame() {
+    if(state!=='paused')return;
+    state=resumeState;lastFrame=performance.now();$('pauseOverlay').hidden=true;
+  }
+  function leaveGame() {
+    state='menu';keys={};touch={};pointer.down=false;upgradeOpen=false;
+    $('pauseOverlay').hidden=true;$('upgradePanel').hidden=true;$('prepBanner').hidden=true;
+    $('gameScreen').hidden=true;$('endScreen').hidden=true;$('menu').hidden=false;
+    renderRoster();setMenuView('main');
+  }
+
   function frame(now) {
     if(state==='menu'||state==='gameover')return;
+    if(state==='paused'){lastFrame=now;requestAnimationFrame(frame);return;}
     const dt=Math.min(.04,(now-lastFrame)/1000||0);lastFrame=now;
     update(dt);draw();
     if(state!=='gameover')requestAnimationFrame(frame);
   }
 
   window.addEventListener('keydown',e=>{
+    if(state==='paused'){if(e.code==='Escape')continueGame();return;}
+    if(e.code==='Escape'&&(state==='playing'||state==='prep')){e.preventDefault();pauseGame();return;}
     keys[e.code]=true;
     if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
     if(e.repeat)return;
@@ -881,6 +902,9 @@
   $('closeUpgrade').addEventListener('click',()=>{upgradeOpen=false;$('upgradePanel').hidden=true;});
   $('nextWaveButton').addEventListener('click',startWave);
   $('returnMenu').addEventListener('click',()=>{$('endScreen').hidden=true;$('menu').hidden=false;state='menu';renderRoster();setMenuView('main');});
+  $('pauseButton').addEventListener('click',pauseGame);
+  $('continueButton').addEventListener('click',continueGame);
+  $('leaveButton').addEventListener('click',leaveGame);
   $('mobileShoot').addEventListener('pointerdown',e=>{e.preventDefault();touch.fire=true;});
   $('mobileShoot').addEventListener('pointerup',()=>touch.fire=false);
   $('mobileShoot').addEventListener('pointercancel',()=>touch.fire=false);
@@ -894,15 +918,3 @@
   window.addEventListener('blur',()=>{keys={};touch={};pointer.down=false;});
   updateTokens();renderRoster();setMenuView("main");
 })();
-
-
-
-
-
-
-
-
-
-
-
-

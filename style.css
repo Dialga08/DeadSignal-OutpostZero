@@ -55,5 +55,23 @@ body{font-family:ui-monospace,"Courier New",monospace}
 .hud-card,.combat-status,.prep-banner,.upgrade-panel,.levelup-card,.levelup-choices button{border-radius:4px}
 .hud-card,.combat-status{box-shadow:2px 2px 0 #090e0c}
 .hud-card small,.combat-status,.prep-banner small,.panel-head small{letter-spacing:.08em}
-.primary-button,.secondary-button,.spin-button,.menu-tab,.operator-card{border-radius:4px}
 
+/* Combat controls live at the top; long player bars stay anchored to the bottom. */
+.hud-right{pointer-events:auto;align-items:flex-start}
+.pause-button{width:42px;height:42px;border:1px solid #a5b39a;border-radius:8px;background:#111a17e8;color:#eff5e8;font:900 20px/1 system-ui,sans-serif;cursor:pointer;box-shadow:2px 2px 0 #090e0c}
+.pause-button:hover{background:#35473b}
+.combat-status{top:14px;bottom:auto;z-index:2}
+.vitals-bar{position:absolute;z-index:2;left:50%;bottom:14px;transform:translateX(-50%);width:min(760px,calc(100% - 260px));display:grid;grid-template-columns:1.2fr 1fr;gap:12px;pointer-events:none}
+.vital-card{padding:8px 12px;background:#111a17e8;border:1px solid #667366;border-radius:8px;box-shadow:2px 2px 0 #090e0c}
+.vital-label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
+.vital-label small{font-size:8px;letter-spacing:.12em;color:#c3cdbd;font-weight:900}
+.vital-label b{font-size:11px;color:#f1f4eb}
+.health-track,.xp-track{height:10px}
+.pause-overlay{position:absolute;inset:0;z-index:8;display:grid;place-items:center;background:#07100ecc;padding:18px}
+.pause-card{width:min(390px,100%);text-align:center;padding:24px}
+.pause-card h2{margin:5px 0 8px;font-size:27px}
+.pause-card .primary-button,.pause-card .leave-button{display:block;width:100%;margin-top:14px}
+.pause-card .leave-button{font-size:11px}
+@media(max-width:800px){.combat-status{top:62px;max-width:calc(100% - 100px);overflow:hidden;font-size:8px;gap:7px;padding:6px 8px}.combat-status span+span{padding-left:7px}.vitals-bar{bottom:12px;width:calc(100% - 24px);grid-template-columns:1.15fr 1fr;gap:7px}.vital-card{padding:7px 8px}.vital-label{margin-bottom:5px}.vital-label b{font-size:10px}.health-track,.xp-track{height:9px}.touch-pad{bottom:78px}.mobile-fire{bottom:82px}.hud-right{flex-direction:row;align-items:flex-start}}
+@media(max-width:500px){.combat-status{top:59px;max-width:calc(100% - 92px);font-size:7px;gap:5px}.combat-status span+span{padding-left:5px}.vitals-bar{bottom:10px;width:calc(100% - 16px);gap:5px}.vital-card{padding:6px}.vital-label small{font-size:7px}.vital-label b{font-size:9px}.health-track,.xp-track{height:8px}.touch-pad{bottom:74px}.mobile-fire{bottom:78px}}
+.primary-button,.secondary-button,.spin-button,.menu-tab,.operator-card{border-radius:4px}

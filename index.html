@@ -82,14 +82,17 @@
           <div class="hud-card"><small>SUPPLIES</small><b id="creditText">0</b></div>
         </div>
         <div class="hud-right">
-          <div class="hud-card health-card"><small id="charNameHud">ROOKIE</small><div class="health-track"><i id="healthFill"></i></div><b id="healthText">85 / 85</b></div>
-          <div class="hud-card"><small>XP</small><div class="xp-track"><i id="xpFill"></i></div><b id="levelText">LV 1</b></div>
+          <button id="pauseButton" class="pause-button" aria-label="Pause game" title="Pause game">Ⅱ</button>
         </div>
       </div>
       <div class="combat-status">
         <span id="weaponHud">KNIFE</span>
         <span id="aimHud">AUTO-AIM ON · R</span>
         <span id="interactHint">E · Search nearby</span>
+      </div>
+      <div class="vitals-bar" aria-label="Player status">
+        <div class="vital-card health-vital"><div class="vital-label"><small id="charNameHud">ROOKIE</small><b id="healthText">85 / 85</b></div><div class="health-track"><i id="healthFill"></i></div></div>
+        <div class="vital-card xp-vital"><div class="vital-label"><small>EXPERIENCE</small><b id="levelText">LV 1</b></div><div class="xp-track"><i id="xpFill"></i></div></div>
       </div>
       <div id="prepBanner" class="prep-banner" hidden>
         <div><small>AREA CLEAR</small><strong id="prepTitle">Wave 1 complete</strong><span id="prepTimer">Next wave in 20</span></div>
@@ -101,6 +104,9 @@
         <div id="upgradeList" class="upgrade-list"></div>
       </div>
       <div id="toast" class="toast" hidden></div>
+      <section id="pauseOverlay" class="pause-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+        <div class="panel pause-card"><p class="eyebrow">MISSION PAUSED</p><h2 id="pauseTitle">Take a breather</h2><p class="muted">The infected and wave timer are stopped.</p><button id="continueButton" class="primary-button">CONTINUE PLAYING</button><button id="leaveButton" class="secondary-button leave-button">LEAVE GAME</button></div>
+      </section>
       <div id="touchPad" class="touch-pad" aria-label="Movement controls">
         <button data-move="up">▲</button><div><button data-move="left">◀</button><button data-move="down">▼</button><button data-move="right">▶</button></div>
       </div>
@@ -111,7 +117,7 @@
       <div class="panel end-card"><p class="eyebrow">MISSION REPORT</p><h2 id="endTitle">SIGNAL LOST</h2><p id="endSummary"></p><button id="returnMenu" class="primary-button">RETURN TO MENU</button></div>
     </section>
   </main>
-  <script src="game.js?v=estate-pixel-art-20261017"></script>
+  <script src="game.js?v=pause-bottom-bars-20261017"></script>
 </body>
 </html>
 
