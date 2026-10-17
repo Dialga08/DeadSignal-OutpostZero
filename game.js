@@ -445,12 +445,19 @@
     {name:'Field rations',desc:'+1 bomb and heal 15 HP',cost:45,apply:()=>{bombCount++;player.hp=Math.min(player.maxHp,player.hp+15);}},
     {name:'Boot conditioning',desc:'+10% movement speed',cost:50,apply:()=>{player.speed*=1.1;}}
   ];
+  function refreshUpgradeAffordability() {
+    $('upgradeCredits').textContent='$'+credits;
+    document.querySelectorAll('#upgradeList .upgrade-option').forEach(button=>{
+      button.disabled=credits<Number(button.dataset.cost);
+    });
+  }
   function renderUpgrades() {
-    $('upgradeCredits').textContent='$'+credits; const root=$('upgradeList');root.innerHTML='';
+    const root=$('upgradeList');root.innerHTML='';
     upgradeOptions.forEach((u)=>{
-      const b=document.createElement('button');b.className='upgrade-option';b.innerHTML='<span><b>'+u.name+'</b><small>'+u.desc+'</small></span><strong>$'+u.cost+' <small>MONEY</small></strong>';
+      const b=document.createElement('button');b.className='upgrade-option';b.dataset.cost=u.cost;b.innerHTML='<span><b>'+u.name+'</b><small>'+u.desc+'</small></span><strong>$'+u.cost+' <small>MONEY</small></strong>';
       b.disabled=credits<u.cost;b.addEventListener('click',()=>{if(credits<u.cost)return;credits-=u.cost;u.apply();renderUpgrades();showToast(u.name+' purchased.');});root.appendChild(b);
     });
+    refreshUpgradeAffordability();
   }
 
   function spawnZombie() {
@@ -562,7 +569,7 @@
     if(state==='prep'){
       movePlayer(dt);
       prepLeft-=dt;$('prepTimer').textContent='Next wave in '+Math.max(0,Math.ceil(prepLeft));
-      if(upgradeOpen)renderUpgrades();
+      if(upgradeOpen)refreshUpgradeAffordability();
       if(prepLeft<=0)startWave();
     } else if(state==='playing') {
       let mx=0,my=0;
