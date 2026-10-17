@@ -49,8 +49,9 @@
     sawedOff:'SawedOff.png', sneakers:'Sneakers.png', tshirt:'Tshirt.png', windJacket:'WindJacket.png'
   };
   Object.entries(LOOT_ICON_FILES).forEach(([name,file])=>loadSprite('loot-'+name,'assets/survival-items/'+encodeURIComponent(file)));
-  const WEAPON_LOOT_ICON = {pistol:'fn45',rifle:'m4',grenade:'grenade',rpg:'heGrenade',minigun:'akm'};
-  const randomLootIcon = (choices=Object.keys(LOOT_ICON_FILES))=>choices[Math.floor(Math.random()*choices.length)];
+  const WEAPON_LOOT_ICON = {pistol:'fn45',rifle:'m4',grenade:'grenadeLauncher',rpg:'rpg',minigun:'minigun'};
+  const WEAPON_LOOT_LABEL = {pistol:'FN-45 pistol',rifle:'M4 rifle',grenade:'grenade launcher',rpg:'RPG',minigun:'minigun'};
+  const LOOT_ICON_GLYPHS = {money:'$',armor:'ARM',grenadeLauncher:'GL',rpg:'RPG',minigun:'MG',radio:'RAD'};
   // Twice the width and height gives four times the explorable area.
   const WORLD = { w: 4400, h: 3200 };
   const CITY_CELL = 260;
@@ -106,15 +107,23 @@
   function showToast(message, iconName) {
     const el = $('toast');
     el.replaceChildren();
-    el.classList.toggle('has-icon',Boolean(iconName&&LOOT_ICON_FILES[iconName]));
-    if(iconName&&LOOT_ICON_FILES[iconName]) {
+    const hasSprite=Boolean(iconName&&LOOT_ICON_FILES[iconName]), glyph=iconName&&LOOT_ICON_GLYPHS[iconName];
+    el.classList.toggle('has-icon',Boolean(hasSprite||glyph));
+    if(hasSprite) {
       const icon=document.createElement('img');icon.src='assets/survival-items/'+encodeURIComponent(LOOT_ICON_FILES[iconName]);icon.alt='';icon.setAttribute('aria-hidden','true');
       el.appendChild(icon);
+    } else if(glyph) {
+      const icon=document.createElement('span');icon.className='loot-glyph';icon.textContent=glyph;icon.setAttribute('aria-hidden','true');el.appendChild(icon);
     }
     const text=document.createElement('span');text.textContent=message;el.appendChild(text);
     el.hidden = false; toastTimer = 3;
   }
   function hideToast() { $('toast').hidden = true; }
+  function drawMoneyIcon(ctx,cx,cy,size) {
+    const w=size,h=size*.62,x=cx-w/2,y=cy-h/2;
+    ctx.fillStyle='#22392b';ctx.fillRect(x,y,w,h);ctx.strokeStyle='#b8d77b';ctx.lineWidth=Math.max(1,size/12);ctx.strokeRect(x+1,y+1,w-2,h-2);
+    ctx.fillStyle='#b8d77b';ctx.font='bold '+Math.max(10,size*.55)+'px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$',cx,cy);ctx.textBaseline='alphabetic';
+  }
 
   function renderRoster() {
     const root = $('roster'); root.innerHTML = '';
@@ -188,7 +197,7 @@
     ];
     const cx=WORLD.w/2,cy=WORLD.h/2;
     const spots = [[cx-310,cy-280],[cx-980,cy-1120],[cx+930,cy-1120],[cx-1570,cy-120],[cx-75,cy+130],[cx+1120,cy+680],[cx-1580,cy+800],[cx-920,cy+1200]];
-    templates.forEach((t,i) => buildings.push({name:t[0],type:t[1],color:t[2],x:spots[i][0],y:spots[i][1],w:190,h:142,looted:false,lootClaimed:false,lootIcon:randomLootIcon(),supplies:['store','depot','clinic'].includes(t[1]),variant:i}));
+    templates.forEach((t,i) => buildings.push({name:t[0],type:t[1],color:t[2],x:spots[i][0],y:spots[i][1],w:190,h:142,looted:false,lootClaimed:false,lootIcon:'money',supplies:['store','depot','clinic'].includes(t[1]),variant:i}));
     // Deterministic districts keep parks, dense blocks, and overgrown streets in consistent places.
     const cols=Math.ceil(WORLD.w/CITY_CELL),rows=Math.ceil(WORLD.h/CITY_CELL);
     const noise=(x,y,s=0)=>{const v=Math.sin(x*127.1+y*311.7+s*74.7)*43758.5453;return v-Math.floor(v);};
@@ -381,30 +390,30 @@
     if(insideBuilding) {
       if(near?.kind==='loot-bin') {
         const b=insideBuilding.building;
-        if(b.lootClaimed){showToast('The supply bin is empty.');return;}
+        if(b.lootClaimed){showToast('The money bin is empty.');return;}
         b.lootClaimed=true;b.looted=true;
         const found=70+Math.floor(Math.random()*61);credits+=found;
-        showToast('Supplies recovered from the '+b.name.toLowerCase()+': +'+found+'.',b.lootIcon);return;
+        showToast('Money recovered from the '+b.name.toLowerCase()+': +$'+found+'.',b.lootIcon);return;
       }
       if(near?.kind==='exit') {
         const b=insideBuilding.building;insideBuilding=null;
         player.x=b.x+b.w/2;player.y=b.y+b.h+player.r+6;
         showToast('Back outside.');return;
       }
-      showToast('Move beside the supply bin or the exit door.');return;
+      showToast('Move beside the money bin or the exit door.');return;
     }
     if(near?.kind==='building') {
       const b=near.item;
-      if(b.supplies) {insideBuilding={building:b,playerX:320,playerY:329};showToast('Inside '+b.name.toLowerCase()+'. Find the supply bin, then use the door to exit.');return;}
+      if(b.supplies) {insideBuilding={building:b,playerX:320,playerY:329};showToast('Inside '+b.name.toLowerCase()+'. Find the money bin, then use the door to exit.');return;}
       if(b.looted){showToast(b.name+' has already been searched.');return;}
       b.looted=true;
       const roll=Math.random();
-      if(roll<.24){const weapons=['pistol','rifle','grenade','rpg','minigun'];const found=weapons[Math.floor(Math.random()*weapons.length)];player.weapon=found;player.ammo=magazineSize(found);player.reloadLeft=0;showToast('Found a ' + found.toUpperCase() + ' in the ' + b.name.toLowerCase() + '!',WEAPON_LOOT_ICON[found]);}
-      else if(roll<.47){player.armor+=25;showToast('Armor plates found. +25 armor.',randomLootIcon(['cap','windJacket','jeans','hikingBoots','sneakers','runningShoes']));}
-      else if(roll<.65){bombCount++;showToast('Found a bomb. Press Q to throw it.',randomLootIcon(['grenade','heGrenade','flashbang']));}
-      else if(roll<.77){airstrikeCount++;showToast('Radio codes found. Press F for an airstrike.',randomLootIcon(['backpack','flashbang']));}
-      else if(roll<.9){player.hp=Math.min(player.maxHp,player.hp+35);showToast('Medical supplies: +35 health.',randomLootIcon(['bandage','medicKit']));}
-      else {credits+=35;showToast('Supply cache: +35 supplies.',randomLootIcon(['cannedFood','freshFood','backpack']));}
+      if(roll<.24){const weapons=['pistol','rifle','grenade','rpg','minigun'];const found=weapons[Math.floor(Math.random()*weapons.length)];player.weapon=found;player.ammo=magazineSize(found);player.reloadLeft=0;showToast('Found a '+WEAPON_LOOT_LABEL[found]+' in the '+b.name.toLowerCase()+'!',WEAPON_LOOT_ICON[found]);}
+      else if(roll<.47){player.armor+=25;showToast('Found armor plates. +25 armor.','armor');}
+      else if(roll<.65){bombCount++;showToast('Found a grenade. Press Q to throw it.','grenade');}
+      else if(roll<.77){airstrikeCount++;showToast('Found an airstrike radio beacon. Press F to call it.','radio');}
+      else if(roll<.9){const medicalItem=Math.random()<.5?'bandage':'medicKit';player.hp=Math.min(player.maxHp,player.hp+35);showToast((medicalItem==='bandage'?'Found bandages':'Found a medical kit')+': +35 health.',medicalItem);}
+      else {credits+=35;showToast('Found a money stash: +$35.','money');}
       return;
     }
     if(near?.kind==='survivor') {
@@ -437,9 +446,9 @@
     {name:'Boot conditioning',desc:'+10% movement speed',cost:50,apply:()=>{player.speed*=1.1;}}
   ];
   function renderUpgrades() {
-    $('upgradeCredits').textContent=credits; const root=$('upgradeList');root.innerHTML='';
+    $('upgradeCredits').textContent='$'+credits; const root=$('upgradeList');root.innerHTML='';
     upgradeOptions.forEach((u)=>{
-      const b=document.createElement('button');b.className='upgrade-option';b.innerHTML='<span><b>'+u.name+'</b><small>'+u.desc+'</small></span><strong>'+u.cost+' <small>SUPPLIES</small></strong>';
+      const b=document.createElement('button');b.className='upgrade-option';b.innerHTML='<span><b>'+u.name+'</b><small>'+u.desc+'</small></span><strong>$'+u.cost+' <small>MONEY</small></strong>';
       b.disabled=credits<u.cost;b.addEventListener('click',()=>{if(credits<u.cost)return;credits-=u.cost;u.apply();renderUpgrades();showToast(u.name+' purchased.');});root.appendChild(b);
     });
   }
@@ -578,7 +587,7 @@
         if(hit){if(b.radius){effects.push({type:'blast',x:b.x,y:b.y,life:.4,max:.4,r:b.radius});zombies.forEach(z=>{if(Math.hypot(z.x-b.x,z.y-b.y)<b.radius)damageZombie(z,b.damage);});}else damageZombie(hit,b.damage);b.life=0;}
       });
       bullets=bullets.filter(b=>b.life>0);zombies=zombies.filter(z=>!z.dead);
-      if(survivor?.following){const follow=Math.min(1,dt*3);moveCircle(survivor,(player.x-25-survivor.x)*follow,(player.y+20-survivor.y)*follow,8);if(Math.hypot(player.x-survivor.shelter.x,player.y-survivor.shelter.y)<95){survivor=null;credits+=75;saveNow();showToast('Survivor safely escorted! +75 supplies.');}}
+      if(survivor?.following){const follow=Math.min(1,dt*3);moveCircle(survivor,(player.x-25-survivor.x)*follow,(player.y+20-survivor.y)*follow,8);if(Math.hypot(player.x-survivor.shelter.x,player.y-survivor.shelter.y)<95){survivor=null;credits+=75;saveNow();showToast('Survivor safely escorted! +$75.','money');}}
       rescueTimer-=dt;if(rescueTimer<=0&&!survivor){spawnRescue();rescueTimer=65+Math.random()*35;}
       if(kills>=quota&&state==='playing')clearWave();
     }
@@ -617,18 +626,18 @@
 
   function endGame() {
     if(state==='gameover')return;state='gameover';$('pauseOverlay').hidden=true;save.bestWave=Math.max(save.bestWave,wave);saveNow();
-    $('endTitle').textContent='SIGNAL LOST';$('endSummary').textContent='You reached wave '+wave+', cleared '+kills+' infected, and earned '+credits+' supplies. Best wave: '+save.bestWave+'.';
+    $('endTitle').textContent='SIGNAL LOST';$('endSummary').textContent='You reached wave '+wave+', cleared '+kills+' infected, and collected $'+credits+'. Best wave: '+save.bestWave+'.';
     $('gameScreen').hidden=true;$('endScreen').hidden=false;
   }
 
   function updateHud() {
     if(!player)return;
-    $('waveText').textContent=wave;$('killText').textContent=kills+' / '+quota;$('creditText').textContent=credits;
+    $('waveText').textContent=wave;$('killText').textContent=kills+' / '+quota;$('creditText').textContent='$'+credits;
     $('healthFill').style.width=Math.max(0,player.hp/player.maxHp*100)+'%';$('healthText').textContent=Math.max(0,Math.ceil(player.hp))+' / '+player.maxHp+(player.armor?' · '+Math.ceil(player.armor)+' armor':'');
     $('xpFill').style.width=Math.min(100,xp/xpNext*100)+'%';$('levelText').textContent='LV '+level;
     $('weaponHud').textContent=player.weapon.toUpperCase()+(player.weapon==='knife'?' · MELEE':player.reloadLeft>0?' · RELOADING '+player.reloadLeft.toFixed(1)+'s':' · '+player.ammo+'/'+magazineSize(player.weapon))+' · Q '+bombCount+' · F '+airstrikeCount;
     const near=nearestThing();
-    $('interactHint').textContent=near?(near.kind==='survivor'?(near.item.rescued?'ESCORT TO SAFEHOUSE':'E · Rescue survivor'):near.kind==='loot-bin'?(insideBuilding.building.lootClaimed?'SUPPLY BIN EMPTY':'E · Loot supply bin'):near.kind==='exit'?'E · Exit building':near.item.supplies?'E · Enter '+near.item.name:'E · Search '+near.item.name):insideBuilding?'Explore inside · E to interact':'E · Search nearby';
+    $('interactHint').textContent=near?(near.kind==='survivor'?(near.item.rescued?'ESCORT TO SAFEHOUSE':'E · Rescue survivor'):near.kind==='loot-bin'?(insideBuilding.building.lootClaimed?'MONEY BIN EMPTY':'E · Loot money bin'):near.kind==='exit'?'E · Exit building':near.item.supplies?'E · Enter '+near.item.name:'E · Search '+near.item.name):insideBuilding?'Explore inside · E to interact':'E · Search nearby';
   }
 
   function drawGroundFoliage() {
@@ -831,7 +840,7 @@
       ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.fillText(survivor.following?'FOLLOWING':'SURVIVOR · E',survivor.x,survivor.y-16);
       if(survivor.following){ctx.strokeStyle='rgba(182,213,156,.45)';ctx.beginPath();ctx.moveTo(survivor.x,survivor.y);ctx.lineTo(survivor.shelter.x,survivor.shelter.y);ctx.stroke();}
     }
-    pickups.forEach(p=>{if(p.kind==='money'){ctx.fillStyle='#22392b';ctx.fillRect(p.x-7,p.y-5,14,10);ctx.fillStyle='#b8d77b';ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$',p.x,p.y);ctx.textBaseline='alphabetic';}else if(p.kind==='ticket'){ctx.fillStyle='#4a2a78';ctx.fillRect(p.x-8,p.y-6,16,12);ctx.fillStyle='#e3c5ff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('T',p.x,p.y);ctx.textBaseline='alphabetic';}else{ctx.fillStyle='#e4ca68';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}});
+    pickups.forEach(p=>{if(p.kind==='money'){drawMoneyIcon(ctx,p.x,p.y,15);}else if(p.kind==='ticket'){ctx.fillStyle='#4a2a78';ctx.fillRect(p.x-8,p.y-6,16,12);ctx.fillStyle='#e3c5ff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('T',p.x,p.y);ctx.textBaseline='alphabetic';}else{ctx.fillStyle='#e4ca68';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}});
     bullets.forEach(b=>{ctx.fillStyle=b.kind==='explosive'?'#f3a45e':'#f1e6a8';ctx.beginPath();ctx.arc(b.x,b.y,b.kind==='explosive'?5:3,0,Math.PI*2);ctx.fill();});
     zombies.forEach(z=>{
       if(z.boss){ctx.fillStyle='rgba(234,115,76,.2)';ctx.beginPath();ctx.arc(z.x,z.y,z.r+8,0,Math.PI*2);ctx.fill();}
@@ -871,9 +880,9 @@
     ctx.fillStyle='#e4d298';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('EXIT · E',320,411);
     ctx.fillStyle='#27312c';ctx.fillRect(452,83,118,96);ctx.fillStyle='#41483e';ctx.fillRect(460,91,102,80);ctx.fillStyle='#303831';ctx.fillRect(468,99,86,62);
     ctx.fillStyle=insideBuilding.building.lootClaimed?'#696b5c':'#a58d4f';ctx.fillRect(484,112,56,43);
-    if(!insideBuilding.building.lootClaimed){const lootSprite=sprites['loot-'+insideBuilding.building.lootIcon];if(lootSprite){ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(lootSprite,496,114,32,32);ctx.restore();}}
+    if(!insideBuilding.building.lootClaimed){drawMoneyIcon(ctx,512,134,32);}
     ctx.fillStyle='#252c27';ctx.fillRect(480,108,64,8);ctx.fillRect(480,155,64,7);ctx.fillRect(480,108,7,54);ctx.fillRect(537,108,7,54);
-    ctx.fillStyle='#f1d887';ctx.font='bold 13px sans-serif';ctx.fillText(insideBuilding.building.lootClaimed?'EMPTY':'SUPPLIES',512,76);
+    ctx.fillStyle='#f1d887';ctx.font='bold 13px sans-serif';ctx.fillText(insideBuilding.building.lootClaimed?'EMPTY':'MONEY',512,76);
     ctx.fillStyle='#d2c7a6';ctx.font='12px sans-serif';ctx.fillText(insideBuilding.building.name,320,20);
     ctx.fillStyle='#343c34';ctx.fillRect(90,102,118,32);ctx.fillRect(88,235,94,40);ctx.fillRect(404,242,108,32);
     ctx.fillStyle='#747566';ctx.fillRect(96,107,106,20);ctx.fillRect(94,241,82,26);ctx.fillRect(410,247,96,18);
