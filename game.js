@@ -129,8 +129,8 @@
       ['CLINIC','clinic','#b98784'],['MOTOR POOL','depot','#87877a'],['RUNDOWN HOUSE','house','#8b7770'],
       ['RUNDOWN HOUSE','house','#8b7770'],['SUPPLY SHED','store','#9f8b68']
     ];
-    const spots = [[310,290],[850,240],[1580,300],[420,930],[1100,1220],[1800,900],[1780,1300],[730,650]];
-    templates.forEach((t,i) => buildings.push({name:t[0],type:t[1],color:t[2],x:spots[i][0],y:spots[i][1],w:142,h:104,looted:false}));
+    const spots = [[170,170],[910,160],[1660,180],[180,850],[980,800],[1690,820],[420,1320],[1420,1320]];
+    templates.forEach((t,i) => buildings.push({name:t[0],type:t[1],color:t[2],x:spots[i][0],y:spots[i][1],w:142,h:104,looted:false,variant:i}));
   }
 
   function resizeCanvas() {
@@ -141,11 +141,85 @@
   window.addEventListener('resize',resizeCanvas);
   function dimensions() { const r=canvas.getBoundingClientRect(); return {w:r.width,h:r.height}; }
   function screenPos(x,y) { return {x:x-camera.x,y:y-camera.y}; }
+  function circleHitsBuilding(x,y,r,b) {
+    const nearX=Math.max(b.x,Math.min(x,b.x+b.w)),nearY=Math.max(b.y,Math.min(y,b.y+b.h));
+    return Math.hypot(x-nearX,y-nearY)<r;
+  }
+  function blockedByBuilding(x,y,r) { return buildings.some(b=>circleHitsBuilding(x,y,r,b)); }
+  function pushOutOfBuildings(entity,r=entity.r) {
+    for(const b of buildings) {
+      if(!circleHitsBuilding(entity.x,entity.y,r,b))continue;
+      const nearX=Math.max(b.x,Math.min(entity.x,b.x+b.w)),nearY=Math.max(b.y,Math.min(entity.y,b.y+b.h));
+      let dx=entity.x-nearX,dy=entity.y-nearY,d=Math.hypot(dx,dy);
+      if(d<.001) {
+        const sides=[{d:entity.x-b.x,dx:-1,dy:0},{d:b.x+b.w-entity.x,dx:1,dy:0},{d:entity.y-b.y,dx:0,dy:-1},{d:b.y+b.h-entity.y,dx:0,dy:1}].sort((a,b)=>a.d-b.d);
+        entity.x+=sides[0].dx*(sides[0].d+r+1);entity.y+=sides[0].dy*(sides[0].d+r+1);
+      } else {
+        const amount=r-d+.5;entity.x+=dx/d*amount;entity.y+=dy/d*amount;
+      }
+    }
+  }
+  function moveCircle(entity,dx,dy,r=entity.r) {
+    pushOutOfBuildings(entity,r);
+    const nextX=Math.max(r,Math.min(WORLD.w-r,entity.x+dx));
+    if(!blockedByBuilding(nextX,entity.y,r))entity.x=nextX;
+    const nextY=Math.max(r,Math.min(WORLD.h-r,entity.y+dy));
+    if(!blockedByBuilding(entity.x,nextY,r))entity.y=nextY;
+  }
+  function drawBuilding(b) {
+    const {x,y,w,h}=b, wall=b.looted?'#4b5048':b.color, roof=b.type==='house'?'#4a4540':b.type==='radio'?'#46535a':'#414a43';
+    ctx.fillStyle='rgba(0,0,0,.34)';ctx.fillRect(x+11,y+13,w,h);
+    ctx.fillStyle='#3c443d';ctx.fillRect(x-7,y-7,w+14,h+14);
+    ctx.fillStyle='#222b26';ctx.fillRect(x,y,w,h);
+    ctx.fillStyle=wall;ctx.fillRect(x+4,y+4,w-8,h-8);
+    // A framed roof with seams, water stains and missing patches.
+    ctx.fillStyle=roof;ctx.fillRect(x+9,y+8,w-18,h-27);
+    ctx.strokeStyle='#737568';ctx.lineWidth=2;ctx.strokeRect(x+9,y+8,w-18,h-27);
+    ctx.strokeStyle='rgba(183,177,151,.32)';ctx.lineWidth=1;
+    for(let seam=0;seam<4;seam++){const yy=y+18+seam*14;ctx.beginPath();ctx.moveTo(x+13,yy);ctx.lineTo(x+w-14,yy);ctx.stroke();}
+    ctx.fillStyle='#2b332e';ctx.fillRect(x+13,y+h-25,w-26,15);
+    // Street-facing windows and a recessed entry make the building read as a place to explore.
+    for(const wx of [x+18,x+w-49]) {
+      ctx.fillStyle='#252d28';ctx.fillRect(wx,y+h-53,31,22);
+      ctx.fillStyle=b.type==='clinic'?'#9fbac0':'#758c83';ctx.fillRect(wx+3,y+h-50,25,16);
+      ctx.fillStyle='#d1c6a5';ctx.fillRect(wx+14,y+h-51,3,18);ctx.fillRect(wx+3,y+h-42,25,2);
+      if(b.variant%3===1){ctx.strokeStyle='#d6cdb3';ctx.beginPath();ctx.moveTo(wx+5,y+h-48);ctx.lineTo(wx+12,y+h-43);ctx.lineTo(wx+8,y+h-36);ctx.stroke();}
+    }
+    const doorX=x+w/2-11;
+    ctx.fillStyle='#222722';ctx.fillRect(doorX-3,y+h-37,28,38);
+    ctx.fillStyle=b.type==='shelter'?'#8da978':'#594b3c';ctx.fillRect(doorX,y+h-34,22,34);
+    ctx.fillStyle='#d9c27b';ctx.fillRect(doorX+16,y+h-18,3,3);
+    ctx.fillStyle='#67695e';ctx.fillRect(doorX-7,y+h-2,36,5);
+    // Distinctive damage and readable site-specific details.
+    if(b.type==='store') {
+      for(let stripe=0;stripe<6;stripe++){ctx.fillStyle=stripe%2?'#a66b51':'#d0b17b';ctx.fillRect(x+12+stripe*19,y+h-62,19,7);}
+      ctx.fillStyle='#252b26';ctx.fillRect(x+w/2-30,y+15,60,13);ctx.fillStyle='#e4d6ad';ctx.font='bold 8px sans-serif';ctx.textAlign='center';ctx.fillText('SUPPLIES',x+w/2,y+24);
+    } else if(b.type==='clinic') {
+      ctx.fillStyle='#e1d9c6';ctx.fillRect(x+w-34,y+14,18,18);ctx.fillStyle='#b55e54';ctx.fillRect(x+w-27,y+17,5,12);ctx.fillRect(x+w-31,y+21,13,4);
+    } else if(b.type==='radio') {
+      ctx.strokeStyle='#1c2421';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+w-28,y+18);ctx.lineTo(x+w-28,y-12);ctx.moveTo(x+w-41,y-5);ctx.lineTo(x+w-15,y-5);ctx.stroke();
+      ctx.strokeStyle='#d9bd70';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x+w-28,y-10,12,3.7,5.7);ctx.stroke();
+    } else if(b.type==='depot') {
+      ctx.fillStyle='#252c28';ctx.fillRect(x+13,y+23,w-26,27);ctx.fillStyle='#77796c';
+      for(let slat=0;slat<5;slat++)ctx.fillRect(x+17,y+26+slat*5,w-34,2);
+    } else if(b.type==='shelter') {
+      ctx.fillStyle='#d6e1cb';ctx.fillRect(x+15,y+14,55,13);ctx.fillStyle='#4e7558';ctx.font='bold 8px sans-serif';ctx.textAlign='center';ctx.fillText('SAFE ZONE',x+42,y+23);
+    } else {
+      ctx.fillStyle='#252b27';ctx.beginPath();ctx.moveTo(x+78,y+11);ctx.lineTo(x+99,y+9);ctx.lineTo(x+93,y+28);ctx.lineTo(x+80,y+32);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#9b6b4d';ctx.fillRect(x+83,y+16,5,4);ctx.fillRect(x+96,y+35,7,3);
+    }
+    // Loose bricks and broken concrete sit around the walls without blocking the walkways.
+    ctx.fillStyle='#777466';ctx.fillRect(x-5,y+h+4,12,5);ctx.fillRect(x+w-7,y-4,9,5);
+    ctx.fillStyle='#9b7257';ctx.fillRect(x+w+2,y+h-19,8,5);ctx.fillRect(x-8,y+28,6,4);
+    ctx.fillStyle='#e2d7b7';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(b.looted?'SEARCHED':b.name,x+w/2,y+h+22);
+    if(b.type==='shelter'){ctx.strokeStyle='#9cbd89';ctx.lineWidth=3;ctx.strokeRect(x-5,y-5,w+10,h+10);}
+  }
   function nearestThing() {
     let best=null, dist=Infinity;
     for (const b of buildings) {
-      const d=Math.hypot(player.x-(b.x+b.w/2),player.y-(b.y+b.h/2));
-      if (d<dist && d<95) {best={kind:'building',item:b,d};dist=d;}
+      const nearX=Math.max(b.x,Math.min(player.x,b.x+b.w)),nearY=Math.max(b.y,Math.min(player.y,b.y+b.h));
+      const d=Math.hypot(player.x-nearX,player.y-nearY);
+      if (d<dist && d<62) {best={kind:'building',item:b,d};dist=d;}
     }
     if (survivor && !survivor.rescued) {
       const d=Math.hypot(player.x-survivor.x,player.y-survivor.y);
@@ -291,8 +365,7 @@
     if(keys.KeyA||keys.ArrowLeft||touch.left)mx--;if(keys.KeyD||keys.ArrowRight||touch.right)mx++;
     if(keys.KeyW||keys.ArrowUp||touch.up)my--;if(keys.KeyS||keys.ArrowDown||touch.down)my++;
     const len=Math.hypot(mx,my)||1;
-    player.x+=mx/len*player.speed*dt;player.y+=my/len*player.speed*dt;
-    player.x=Math.max(player.r,Math.min(WORLD.w-player.r,player.x));player.y=Math.max(player.r,Math.min(WORLD.h-player.r,player.y));
+    moveCircle(player,mx/len*player.speed*dt,my/len*player.speed*dt);
   }
   function update(dt) {
     worldTime+=dt;if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)hideToast();}
@@ -306,8 +379,7 @@
       let mx=0,my=0;
       if(keys.KeyA||keys.ArrowLeft||touch.left)mx--;if(keys.KeyD||keys.ArrowRight||touch.right)mx++;
       if(keys.KeyW||keys.ArrowUp||touch.up)my--;if(keys.KeyS||keys.ArrowDown||touch.down)my++;
-      const len=Math.hypot(mx,my)||1;player.x+=mx/len*player.speed*dt;player.y+=my/len*player.speed*dt;
-      player.x=Math.max(player.r,Math.min(WORLD.w-player.r,player.x));player.y=Math.max(player.r,Math.min(WORLD.h-player.r,player.y));
+      const len=Math.hypot(mx,my)||1;moveCircle(player,mx/len*player.speed*dt,my/len*player.speed*dt);
       if((autoAim&&zombies.length>0)||pointer.down||touch.fire)fireWeapon();
       spawnAccumulator+=dt;
       const maxAlive=Math.min(5,quota-kills), interval=Math.max(.55,1.45-wave*.03);
@@ -315,7 +387,7 @@
       zombies.forEach(z=>{
         if(z.dead)return;
         const dx=player.x-z.x,dy=player.y-z.y,d=Math.hypot(dx,dy)||1;
-        if(d>player.r+z.r+2){z.x+=dx/d*z.speed*dt;z.y+=dy/d*z.speed*dt;}
+        if(d>player.r+z.r+2){moveCircle(z,dx/d*z.speed*dt,dy/d*z.speed*dt,z.r);}
         else if(z.attackTimer<=0){z.attackTimer=.8;let damage=z.damage;if(player.armor>0){const absorbed=Math.min(player.armor,damage);player.armor-=absorbed;damage-=absorbed;}player.hp-=damage;player.invuln=.25;if(player.hp<=0)endGame();}
         z.attackTimer=Math.max(0,z.attackTimer-dt);
       });
@@ -327,7 +399,7 @@
       });
       bullets=bullets.filter(b=>b.life>0);zombies=zombies.filter(z=>!z.dead);
       pickups.forEach(p=>{const d=Math.hypot(player.x-p.x,player.y-p.y);if(d<player.r+20){xp+=p.value;if(xp>=xpNext)levelUp();p.collected=true;}});pickups=pickups.filter(p=>!p.collected);
-      if(survivor?.following){survivor.x+=(player.x-25-survivor.x)*Math.min(1,dt*3);survivor.y+=(player.y+20-survivor.y)*Math.min(1,dt*3);if(Math.hypot(player.x-survivor.shelter.x,player.y-survivor.shelter.y)<95){survivor=null;credits+=75;save.tokens+=1;saveNow();showToast('Survivor safely escorted! +75 supplies and +1 spin token.');}}
+      if(survivor?.following){const follow=Math.min(1,dt*3);moveCircle(survivor,(player.x-25-survivor.x)*follow,(player.y+20-survivor.y)*follow,8);if(Math.hypot(player.x-survivor.shelter.x,player.y-survivor.shelter.y)<95){survivor=null;credits+=75;save.tokens+=1;saveNow();showToast('Survivor safely escorted! +75 supplies and +1 spin token.');}}
       rescueTimer-=dt;if(rescueTimer<=0&&!survivor){spawnRescue();rescueTimer=65+Math.random()*35;}
       if(kills>=quota&&state==='playing')clearWave();
     }
@@ -422,13 +494,7 @@
       ctx.fillStyle='#858578';ctx.fillRect(-27,-8,4,4);ctx.fillRect(24,7,6,2);
       ctx.restore();
     });
-    buildings.forEach(b=>{
-      ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(b.x+6,b.y+8,b.w,b.h);
-      ctx.fillStyle=b.looted?'#4d5148':(b.type==='house'||b.type==='radio'?tilePatterns.rock:b.color)||b.color;ctx.fillRect(b.x,b.y,b.w,b.h);
-      ctx.fillStyle='#344039';ctx.fillRect(b.x+10,b.y+10,b.w-20,13);
-      ctx.fillStyle='#d2d0bd';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(b.looted?'SEARCHED':b.name,b.x+b.w/2,b.y+b.h+14);
-      if(b.type==='shelter'){ctx.strokeStyle='#9cbd89';ctx.lineWidth=2;ctx.strokeRect(b.x-5,b.y-5,b.w+10,b.h+10);}
-    });
+    buildings.forEach(drawBuilding);
     if(survivor){
       ctx.fillStyle=survivor.following?'#b6d59c':'#f1d083';ctx.beginPath();ctx.arc(survivor.x,survivor.y,9,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.fillText(survivor.following?'FOLLOWING':'SURVIVOR · E',survivor.x,survivor.y-16);
