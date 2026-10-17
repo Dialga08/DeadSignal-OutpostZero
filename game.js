@@ -58,7 +58,7 @@
   let player, zombies = [], bullets = [], pickups = [], buildings = [], cityBlocks = [], cityBuildings = [], trees = [], parkFeatures = [], survivor = null, effects = [];
   let keys = {}, pointer = {x:0,y:0,down:false}, touch = {}, wave = 1, quota = 10, kills = 0, credits = 0, prepLeft = 20;
   let autoAim = false, upgradeOpen = false, fireCooldown = 0, bombCount = 1, airstrikeCount = 0, spawnAccumulator = 0;
-  let worldTime = 0, level = 1, xp = 0, xpNext = 10, camera = {x:0,y:0}, drawBounds = null, waveSpawned = 0;
+  let worldTime = 0, level = 1, xp = 0, xpNext = 10, camera = {x:0,y:0}, drawBounds = null, waveSpawned = 0, insideBuilding = null;
 
   function loadSave() {
     try {
@@ -131,7 +131,7 @@
   function beginGame() {
     $('menu').hidden = true; $('endScreen').hidden = true; $('gameScreen').hidden = false;
     state='playing'; wave=1; quota=10; kills=0; credits=0; zombies=[]; bullets=[]; pickups=[]; effects=[]; survivor=null;
-    worldTime=0; level=1; xp=0; xpNext=10; rescueTimer=45; autoAim=false; upgradeOpen=false; bombCount=1; airstrikeCount=0;
+    worldTime=0; level=1; xp=0; xpNext=10; rescueTimer=45; autoAim=false; upgradeOpen=false; bombCount=1; airstrikeCount=0; insideBuilding=null;
     const c = selectedChar();
     player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:c.hp,maxHp:c.hp,attack:c.attack,speed:c.speed,armor:0,fireRate:1,weapon:c.weapon,baseWeapon:c.weapon,color:c.color,invuln:0,ammo:magazineSize(c.weapon),reloadLeft:0};
     quota=10; waveSpawned=0; spawnAccumulator=0; buildMap(); resizeCanvas(); $('upgradePanel').hidden=true; $('prepBanner').hidden=true;
@@ -148,7 +148,7 @@
     ];
     const cx=WORLD.w/2,cy=WORLD.h/2;
     const spots = [[cx-310,cy-280],[cx-980,cy-1120],[cx+930,cy-1120],[cx-1570,cy-120],[cx-75,cy+130],[cx+1120,cy+680],[cx-1580,cy+800],[cx-920,cy+1200]];
-    templates.forEach((t,i) => buildings.push({name:t[0],type:t[1],color:t[2],x:spots[i][0],y:spots[i][1],w:142,h:104,looted:false,variant:i}));
+    templates.forEach((t,i) => buildings.push({name:t[0],type:t[1],color:t[2],x:spots[i][0],y:spots[i][1],w:190,h:142,looted:false,lootClaimed:false,supplies:['store','depot','clinic'].includes(t[1]),variant:i}));
     // Deterministic districts keep parks, dense blocks, and overgrown streets in consistent places.
     const cols=Math.ceil(WORLD.w/CITY_CELL),rows=Math.ceil(WORLD.h/CITY_CELL);
     const noise=(x,y,s=0)=>{const v=Math.sin(x*127.1+y*311.7+s*74.7)*43758.5453;return v-Math.floor(v);};
@@ -160,7 +160,7 @@
       cityBlocks.push(block);
       const pad={x:x+72,y:y+62,w:176,h:188};
       if(noise(col,row,3)<style.building) {
-        const bw=128+Math.floor(noise(col,row,4)*49),bh=132+Math.floor(noise(col,row,5)*53);
+        const bw=150+Math.floor(noise(col,row,4)*27),bh=155+Math.floor(noise(col,row,5)*31);
         const ruin={name:'RUINED BLOCK',x:pad.x+Math.floor((pad.w-bw)*noise(col,row,6)),y:pad.y+Math.floor((pad.h-bh)*noise(col,row,7)),w:bw,h:bh,variant:Math.floor(noise(col,row,8)*12),district};
         const nearFacility=buildings.some(b=>overlaps(ruin,b,35));
         const nearStart=Math.hypot(ruin.x+ruin.w/2-cx,ruin.y+ruin.h/2-cy)<150;
@@ -240,6 +240,10 @@
     ctx.fillStyle=b.type==='shelter'?'#8da978':'#594b3c';ctx.fillRect(doorX,y+h-34,22,34);
     ctx.fillStyle='#d9c27b';ctx.fillRect(doorX+16,y+h-18,3,3);
     ctx.fillStyle='#67695e';ctx.fillRect(doorX-7,y+h-2,36,5);
+    if(b.supplies) {
+      ctx.fillStyle=b.lootClaimed?'#777568':'#e2c66e';ctx.fillRect(x+w/2-17,y+h+2,34,4);
+      ctx.fillStyle='#f1d987';ctx.font='bold 8px sans-serif';ctx.textAlign='center';ctx.fillText(b.lootClaimed?'LOOTED':'ENTER · E',x+w/2,y+h+34);
+    }
     // Distinctive damage and readable site-specific details.
     if(b.type==='store') {
       for(let stripe=0;stripe<6;stripe++){ctx.fillStyle=stripe%2?'#a66b51':'#d0b17b';ctx.fillRect(x+12+stripe*19,y+h-62,19,7);}
@@ -305,8 +309,19 @@
     ctx.fillStyle='#d0c6a8';ctx.fillRect(x-4,y+24,5,3);ctx.fillRect(x+w-1,y+h-23,7,4);
   }
   function nearestThing() {
+    if(insideBuilding) {
+      const p=insideBuilding,binDist=Math.hypot(p.playerX-510,p.playerY-125),doorDist=Math.hypot(p.playerX-320,p.playerY-365);
+      if(binDist<54)return {kind:'loot-bin',d:binDist};
+      if(doorDist<48)return {kind:'exit',d:doorDist};
+      return null;
+    }
     let best=null, dist=Infinity;
     for (const b of buildings) {
+      if(b.supplies) {
+        const d=Math.hypot(player.x-(b.x+b.w/2),player.y-(b.y+b.h));
+        if(d<dist&&d<58){best={kind:'building',item:b,d};dist=d;}
+        continue;
+      }
       const nearX=Math.max(b.x,Math.min(player.x,b.x+b.w)),nearY=Math.max(b.y,Math.min(player.y,b.y+b.h));
       const d=Math.hypot(player.x-nearX,player.y-nearY);
       if (d<dist && d<62) {best={kind:'building',item:b,d};dist=d;}
@@ -321,8 +336,24 @@
   function interact() {
     if(state!=='playing') return;
     const near=nearestThing();
+    if(insideBuilding) {
+      if(near?.kind==='loot-bin') {
+        const b=insideBuilding.building;
+        if(b.lootClaimed){showToast('The supply bin is empty.');return;}
+        b.lootClaimed=true;b.looted=true;
+        const found=70+Math.floor(Math.random()*61);credits+=found;
+        showToast('Supplies recovered from the '+b.name.toLowerCase()+': +'+found+'.');return;
+      }
+      if(near?.kind==='exit') {
+        const b=insideBuilding.building;insideBuilding=null;
+        player.x=b.x+b.w/2;player.y=b.y+b.h+player.r+6;
+        showToast('Back outside.');return;
+      }
+      showToast('Move beside the supply bin or the exit door.');return;
+    }
     if(near?.kind==='building') {
       const b=near.item;
+      if(b.supplies) {insideBuilding={building:b,playerX:320,playerY:329};showToast('Inside '+b.name.toLowerCase()+'. Find the supply bin, then use the door to exit.');return;}
       if(b.looted){showToast(b.name+' has already been searched.');return;}
       b.looted=true;
       const roll=Math.random();
@@ -459,6 +490,15 @@
   }
   function update(dt) {
     worldTime+=dt;if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)hideToast();}
+    if(insideBuilding) {
+      let mx=0,my=0;
+      if(keys.KeyA||keys.ArrowLeft||touch.left)mx--;if(keys.KeyD||keys.ArrowRight||touch.right)mx++;
+      if(keys.KeyW||keys.ArrowUp||touch.up)my--;if(keys.KeyS||keys.ArrowDown||touch.down)my++;
+      const len=Math.hypot(mx,my)||1,speed=player.speed*dt;
+      insideBuilding.playerX=Math.max(48,Math.min(592,insideBuilding.playerX+mx/len*speed));
+      insideBuilding.playerY=Math.max(58,Math.min(352,insideBuilding.playerY+my/len*speed));
+      updateHud();return;
+    }
     fireCooldown=Math.max(0,fireCooldown-dt);if(player.invuln>0)player.invuln-=dt;updateReload(dt);
     if(state==='prep'){
       movePlayer(dt);
@@ -534,7 +574,8 @@
     $('healthFill').style.width=Math.max(0,player.hp/player.maxHp*100)+'%';$('healthText').textContent=Math.max(0,Math.ceil(player.hp))+' / '+player.maxHp+(player.armor?' · '+Math.ceil(player.armor)+' armor':'');
     $('xpFill').style.width=Math.min(100,xp/xpNext*100)+'%';$('levelText').textContent='LV '+level;
     $('weaponHud').textContent=player.weapon.toUpperCase()+(player.weapon==='knife'?' · MELEE':player.reloadLeft>0?' · RELOADING '+player.reloadLeft.toFixed(1)+'s':' · '+player.ammo+'/'+magazineSize(player.weapon))+' · Q '+bombCount+' · F '+airstrikeCount;
-    const near=nearestThing();$('interactHint').textContent=near?(near.kind==='survivor'?(near.item.rescued?'ESCORT TO SAFEHOUSE':'E · Rescue survivor'):'E · Search '+near.item.name):'E · Search nearby';
+    const near=nearestThing();
+    $('interactHint').textContent=near?(near.kind==='survivor'?(near.item.rescued?'ESCORT TO SAFEHOUSE':'E · Rescue survivor'):near.kind==='loot-bin'?(insideBuilding.building.lootClaimed?'SUPPLY BIN EMPTY':'E · Loot supply bin'):near.kind==='exit'?'E · Exit building':near.item.supplies?'E · Enter '+near.item.name:'E · Search '+near.item.name):insideBuilding?'Explore inside · E to interact':'E · Search nearby';
   }
 
   function drawGroundFoliage() {
@@ -663,6 +704,7 @@
   function draw() {
     if($('gameScreen').hidden||!player)return;
     const {w,h}=dimensions();
+    if(insideBuilding){drawInterior(w,h);return;}
     drawBounds={left:camera.x-72,top:camera.y-72,right:camera.x+w/CAMERA_ZOOM+72,bottom:camera.y+h/CAMERA_ZOOM+72};
     ctx.clearRect(0,0,w,h);ctx.fillStyle='#202c28';ctx.fillRect(0,0,w,h);
     ctx.save();ctx.scale(CAMERA_ZOOM,CAMERA_ZOOM);ctx.translate(-camera.x,-camera.y);
@@ -677,7 +719,8 @@
       if(tilePatterns.stone){ctx.globalAlpha=.2;ctx.fillStyle=tilePatterns.stone;ctx.fillRect(rx,top,62,length);ctx.globalAlpha=1;}
       ctx.fillStyle='#77766a';ctx.fillRect(rx-4,top,4,length);ctx.fillRect(rx+62,top,5,length);
       ctx.fillStyle='rgba(27,32,29,.34)';ctx.fillRect(rx+8,top,2,length);ctx.fillRect(rx+52,top,2,length);
-      ctx.setLineDash([18,24]);ctx.strokeStyle='rgba(196,182,137,.72)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(rx+31,top);ctx.lineTo(rx+31,bottom);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='rgba(196,182,137,.72)';
+      for(let yy=Math.floor(top/42)*42;yy<bottom;yy+=42)ctx.fillRect(rx+30,yy,2,18);
       for(let yy=Math.floor(top/260)*260+28;yy<bottom;yy+=260){ctx.fillStyle='#c1b58b';ctx.fillRect(rx+5,yy,7,3);ctx.fillRect(rx+50,yy,7,3);}
     }
     for(let ry=0;ry<WORLD.h;ry+=260) {
@@ -687,7 +730,8 @@
       if(tilePatterns.stone){ctx.globalAlpha=.2;ctx.fillStyle=tilePatterns.stone;ctx.fillRect(left,ry,length,54);ctx.globalAlpha=1;}
       ctx.fillStyle='#77766a';ctx.fillRect(left,ry-4,length,4);ctx.fillRect(left,ry+54,length,5);
       ctx.fillStyle='rgba(27,32,29,.34)';ctx.fillRect(left,ry+8,length,2);ctx.fillRect(left,ry+44,length,2);
-      ctx.setLineDash([18,24]);ctx.strokeStyle='rgba(196,182,137,.72)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(left,ry+27);ctx.lineTo(right,ry+27);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='rgba(196,182,137,.72)';
+      for(let xx=Math.floor(left/42)*42;xx<right;xx+=42)ctx.fillRect(xx,ry+26,18,2);
     }
     drawRoadWear();
     for(let i=0;i<380;i++) {
@@ -738,6 +782,35 @@
     ctx.restore();
     ctx.restore();
     if(state==='playing'&&pointer.x>0){ctx.strokeStyle='rgba(235,229,196,.65)';ctx.beginPath();ctx.arc(pointer.x,pointer.y,7,0,Math.PI*2);ctx.moveTo(pointer.x-11,pointer.y);ctx.lineTo(pointer.x+11,pointer.y);ctx.moveTo(pointer.x,pointer.y-11);ctx.lineTo(pointer.x,pointer.y+11);ctx.stroke();}
+  }
+
+  function drawInterior(w,h) {
+    ctx.clearRect(0,0,w,h);ctx.fillStyle='#18211e';ctx.fillRect(0,0,w,h);
+    const scale=Math.min((w-32)/640,(h-94)/420),ox=(w-640*scale)/2,oy=(h-420*scale)/2;
+    ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);
+    ctx.fillStyle='#303b35';ctx.fillRect(0,0,640,420);
+    ctx.fillStyle='#666553';ctx.fillRect(25,25,590,370);
+    ctx.fillStyle='#555447';ctx.fillRect(38,38,564,344);
+    // Floorboards, cracks, scattered debris, and heavy outer walls establish an indoor room.
+    ctx.strokeStyle='rgba(196,181,133,.18)';ctx.lineWidth=2;
+    for(let y=72;y<365;y+=42){ctx.beginPath();ctx.moveTo(42,y);ctx.lineTo(598,y);ctx.stroke();}
+    ctx.fillStyle='#343a32';ctx.fillRect(25,25,590,18);ctx.fillRect(25,25,18,370);ctx.fillRect(597,25,18,370);ctx.fillRect(25,382,250,13);ctx.fillRect(365,382,250,13);
+    ctx.fillStyle='#a18a5e';ctx.fillRect(275,378,90,17);ctx.fillStyle='#252b25';ctx.fillRect(292,349,56,34);ctx.fillStyle='#756247';ctx.fillRect(298,354,44,28);
+    ctx.fillStyle='#e4d298';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('EXIT · E',320,411);
+    ctx.fillStyle='#27312c';ctx.fillRect(452,83,118,96);ctx.fillStyle='#41483e';ctx.fillRect(460,91,102,80);ctx.fillStyle='#303831';ctx.fillRect(468,99,86,62);
+    ctx.fillStyle=insideBuilding.building.lootClaimed?'#696b5c':'#a58d4f';ctx.fillRect(484,112,56,43);
+    ctx.fillStyle='#252c27';ctx.fillRect(480,108,64,8);ctx.fillRect(480,155,64,7);ctx.fillRect(480,108,7,54);ctx.fillRect(537,108,7,54);
+    ctx.fillStyle='#f1d887';ctx.font='bold 13px sans-serif';ctx.fillText(insideBuilding.building.lootClaimed?'EMPTY':'SUPPLIES',512,76);
+    ctx.fillStyle='#d2c7a6';ctx.font='12px sans-serif';ctx.fillText(insideBuilding.building.name,320,20);
+    ctx.fillStyle='#343c34';ctx.fillRect(90,102,118,32);ctx.fillRect(88,235,94,40);ctx.fillRect(404,242,108,32);
+    ctx.fillStyle='#747566';ctx.fillRect(96,107,106,20);ctx.fillRect(94,241,82,26);ctx.fillRect(410,247,96,18);
+    for(let i=0;i<4;i++){ctx.fillStyle=i%2?'#657065':'#92845f';ctx.fillRect(100+i*24,109,15,16);}
+    const px=insideBuilding.playerX,py=insideBuilding.playerY;
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(px+2,py+5,14,7,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=player.color;ctx.beginPath();ctx.arc(px,py,player.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#202923';ctx.fillRect(px+4,py-3,player.r+8,6);
+    ctx.restore();
+    ctx.fillStyle='#e6e0ca';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('WASD · MOVE     E · LOOT BIN / EXIT',w/2,h-20);
   }
 
   function frame(now) {
