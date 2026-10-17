@@ -88,7 +88,7 @@
   let state = 'menu', lastFrame = 0, toastTimer = 0, rescueTimer = 50, levelChoices = null;
   let player, zombies = [], bullets = [], pickups = [], buildings = [], cityBlocks = [], cityBuildings = [], trees = [], parkFeatures = [], survivor = null, effects = [];
   let keys = {}, pointer = {x:0,y:0,down:false}, touch = {}, wave = 1, quota = 10, kills = 0, credits = 0, prepLeft = 20;
-  let autoAim = false, upgradeOpen = false, fireCooldown = 0, bombCount = 1, airstrikeCount = 0, spawnAccumulator = 0;
+  let autoAim = false, upgradeOpen = false, fireCooldown = 0, bombCount = 1, airstrikeCount = 0, spawnAccumulator = 0, bossTicketThisWave = false;
   let worldTime = 0, level = 1, xp = 0, xpNext = 10, camera = {x:0,y:0}, drawBounds = null, waveSpawned = 0, insideBuilding = null;
 
   function loadSave() {
@@ -133,7 +133,7 @@
     ['rookie',50], ['sidearm',27], ['scout',15], ['demolition',7], ['rocketeer',0.45], ['gunner',0.35], ['heli',0.1], ['tank',0.1]
   ];
   function spinGacha() {
-    if (save.tokens < 1) { showGacha('No tokens left. Clear a wave or rescue someone to earn more.'); return; }
+    if (save.tokens < 1) { showGacha('No tickets left. Defeat the elite infected every fifth wave to earn one.'); return; }
     save.tokens--; saveNow();
     $('spinButton').disabled = true;
     $('gumballs').classList.add('spinning');
@@ -151,7 +151,7 @@
       } else {
         const refund = c.rarity === 'Legendary' ? 3 : c.rarity === 'Epic' ? 2 : 1;
         save.tokens += refund;
-        $('gachaResult').innerHTML = '<b>' + c.name + ' duplicate</b><br>Converted into ' + refund + ' spin token' + (refund > 1 ? 's' : '') + '.';
+        $('gachaResult').innerHTML = '<b>' + c.name + ' duplicate</b><br>Converted into ' + refund + ' spin ticket' + (refund > 1 ? 's' : '') + '.';
       }
       saveNow(); renderRoster(); $('spinButton').disabled = false;
     }, 1000);
@@ -170,7 +170,7 @@
   function beginGame() {
     $('menu').hidden = true; $('endScreen').hidden = true; $('gameScreen').hidden = false;
     $('pauseOverlay').hidden = true;
-    state='playing'; wave=1; quota=10; kills=0; credits=0; zombies=[]; bullets=[]; pickups=[]; effects=[]; survivor=null;
+    state='playing'; wave=1; quota=10; kills=0; credits=0; zombies=[]; bullets=[]; pickups=[]; effects=[]; survivor=null; bossTicketThisWave=false;
     worldTime=0; level=1; xp=0; xpNext=10; rescueTimer=45; autoAim=false; upgradeOpen=false; bombCount=1; airstrikeCount=0; insideBuilding=null;
     const c = selectedChar();
     player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:c.hp,maxHp:c.hp,attack:c.attack,speed:c.speed,armor:0,fireRate:1,weapon:c.weapon,baseWeapon:c.weapon,color:c.color,invuln:0,ammo:magazineSize(c.weapon),reloadLeft:0};
@@ -417,11 +417,11 @@
 
   function startWave() {
     if(state==='prep'){
-      state='playing';wave++;quota=10+(wave-1)*5;kills=0;waveSpawned=0;prepLeft=20;spawnAccumulator=0;$('prepBanner').hidden=true;$('upgradePanel').hidden=true;showToast('Wave '+wave+': eliminate '+quota+' infected.');}
+      state='playing';wave++;quota=10+(wave-1)*5;kills=0;waveSpawned=0;prepLeft=20;spawnAccumulator=0;bossTicketThisWave=false;$('prepBanner').hidden=true;$('upgradePanel').hidden=true;showToast('Wave '+wave+': eliminate '+quota+' infected.'+(wave%5===0?' An elite is expected.':''));}
   }
   function clearWave() {
-    state='prep'; prepLeft=20; zombies=[]; bullets=[]; save.tokens++; save.bestWave=Math.max(save.bestWave,wave); saveNow();
-    $('prepBanner').hidden=false; $('prepTitle').textContent='Wave '+wave+' complete'; $('prepTimer').textContent='Next wave in 20'; showToast('Wave cleared! +1 spin token and supplies.');
+    state='prep'; prepLeft=20; zombies=[]; bullets=[]; save.bestWave=Math.max(save.bestWave,wave); saveNow();
+    $('prepBanner').hidden=false; $('prepTitle').textContent='Wave '+wave+' complete'; $('prepTimer').textContent='Next wave in 20'; showToast(bossTicketThisWave?'Elite defeated! Collect its dropped Gumball ticket.':'Wave cleared! Spend zombie cash on upgrades.');
   }
 
   function toggleUpgrades() {
@@ -450,8 +450,10 @@
     let x=side===0?camera.x-30:side===1?camera.x+viewW+30:camera.x+Math.random()*viewW;
     let y=side===2?camera.y-30:side===3?camera.y+viewH+30:camera.y+Math.random()*viewH;
     x=Math.max(margin,Math.min(WORLD.w-margin,x));y=Math.max(margin,Math.min(WORLD.h-margin,y));
+    const boss=wave%5===0&&waveSpawned===quota-1;
     const brute=wave>2&&Math.random()<Math.min(.35,.08+wave*.02);
-    waveSpawned++;zombies.push({x,y,r:brute?17:12,hp:brute?3+Math.floor(wave/3):1+Math.floor(wave/5),maxHp:brute?3+Math.floor(wave/3):1+Math.floor(wave/5),speed:brute?25+wave:34+Math.min(wave*1.5,28),damage:brute?13:8,attackTimer:0,color:brute?'#91715e':'#87947b',dead:false});
+    const hp=boss?18+wave*3:brute?3+Math.floor(wave/3):1+Math.floor(wave/5);
+    waveSpawned++;zombies.push({x,y,r:boss?24:brute?17:12,hp,maxHp:hp,speed:boss?22+Math.min(wave,16):brute?25+wave:34+Math.min(wave*1.5,28),damage:boss?18:brute?13:8,attackTimer:0,color:boss?'#bb5746':brute?'#91715e':'#87947b',boss,dead:false});
   }
   function aimTarget() {
     const mouseWorld={x:pointer.x/CAMERA_ZOOM+camera.x,y:pointer.y/CAMERA_ZOOM+camera.y};
@@ -506,7 +508,13 @@
   }
   function damageZombie(z,damage) {
     if(z.dead)return; z.hp-=damage;
-    if(z.hp<=0){z.dead=true;kills++;credits+=5+Math.min(wave,10);const amount=1+Math.floor(Math.random()*2);pickups.push({x:z.x,y:z.y,r:5,value:amount,kind:'xp'});if(kills>=quota&&state==='playing')clearWave();}
+    if(z.hp<=0){
+      z.dead=true;kills++;
+      pickups.push({x:z.x-5,y:z.y,r:7,value:5+Math.min(wave,10),kind:'money'});
+      const amount=1+Math.floor(Math.random()*2);pickups.push({x:z.x+6,y:z.y,r:5,value:amount,kind:'xp'});
+      if(z.boss){pickups.push({x:z.x,y:z.y-12,r:8,value:1,kind:'ticket'});bossTicketThisWave=true;}
+      if(kills>=quota&&state==='playing')clearWave();
+    }
   }
 
   function useBomb() {
@@ -570,10 +578,13 @@
         if(hit){if(b.radius){effects.push({type:'blast',x:b.x,y:b.y,life:.4,max:.4,r:b.radius});zombies.forEach(z=>{if(Math.hypot(z.x-b.x,z.y-b.y)<b.radius)damageZombie(z,b.damage);});}else damageZombie(hit,b.damage);b.life=0;}
       });
       bullets=bullets.filter(b=>b.life>0);zombies=zombies.filter(z=>!z.dead);
-      pickups.forEach(p=>{const d=Math.hypot(player.x-p.x,player.y-p.y);if(d<player.r+20){xp+=p.value;if(xp>=xpNext)levelUp();p.collected=true;}});pickups=pickups.filter(p=>!p.collected);
-      if(survivor?.following){const follow=Math.min(1,dt*3);moveCircle(survivor,(player.x-25-survivor.x)*follow,(player.y+20-survivor.y)*follow,8);if(Math.hypot(player.x-survivor.shelter.x,player.y-survivor.shelter.y)<95){survivor=null;credits+=75;save.tokens+=1;saveNow();showToast('Survivor safely escorted! +75 supplies and +1 spin token.');}}
+      if(survivor?.following){const follow=Math.min(1,dt*3);moveCircle(survivor,(player.x-25-survivor.x)*follow,(player.y+20-survivor.y)*follow,8);if(Math.hypot(player.x-survivor.shelter.x,player.y-survivor.shelter.y)<95){survivor=null;credits+=75;saveNow();showToast('Survivor safely escorted! +75 supplies.');}}
       rescueTimer-=dt;if(rescueTimer<=0&&!survivor){spawnRescue();rescueTimer=65+Math.random()*35;}
       if(kills>=quota&&state==='playing')clearWave();
+    }
+    if(state==='playing'||state==='prep'){
+      pickups.forEach(p=>{const d=Math.hypot(player.x-p.x,player.y-p.y);if(d<player.r+20){if(p.kind==='money')credits+=p.value;else if(p.kind==='ticket'){save.tokens+=p.value;bossTicketThisWave=false;saveNow();showToast('Gumball ticket collected!');}else{xp+=p.value;if(xp>=xpNext)levelUp();}p.collected=true;}});
+      pickups=pickups.filter(p=>!p.collected);
     }
     effects.forEach(e=>e.life-=dt);effects=effects.filter(e=>e.life>0);
     const dim=dimensions(),viewW=dim.w/CAMERA_ZOOM,viewH=dim.h/CAMERA_ZOOM;
@@ -820,12 +831,14 @@
       ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.fillText(survivor.following?'FOLLOWING':'SURVIVOR · E',survivor.x,survivor.y-16);
       if(survivor.following){ctx.strokeStyle='rgba(182,213,156,.45)';ctx.beginPath();ctx.moveTo(survivor.x,survivor.y);ctx.lineTo(survivor.shelter.x,survivor.shelter.y);ctx.stroke();}
     }
-    pickups.forEach(p=>{ctx.fillStyle='#e4ca68';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();});
+    pickups.forEach(p=>{if(p.kind==='money'){ctx.fillStyle='#22392b';ctx.fillRect(p.x-7,p.y-5,14,10);ctx.fillStyle='#b8d77b';ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$',p.x,p.y);ctx.textBaseline='alphabetic';}else if(p.kind==='ticket'){ctx.fillStyle='#4a2a78';ctx.fillRect(p.x-8,p.y-6,16,12);ctx.fillStyle='#e3c5ff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('T',p.x,p.y);ctx.textBaseline='alphabetic';}else{ctx.fillStyle='#e4ca68';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}});
     bullets.forEach(b=>{ctx.fillStyle=b.kind==='explosive'?'#f3a45e':'#f1e6a8';ctx.beginPath();ctx.arc(b.x,b.y,b.kind==='explosive'?5:3,0,Math.PI*2);ctx.fill();});
     zombies.forEach(z=>{
+      if(z.boss){ctx.fillStyle='rgba(234,115,76,.2)';ctx.beginPath();ctx.arc(z.x,z.y,z.r+8,0,Math.PI*2);ctx.fill();}
       if(sprites.zombie){const facing=Math.atan2(player.y-z.y,player.x-z.x);ctx.save();ctx.translate(z.x,z.y);ctx.rotate(facing+Math.PI/2);const sw=z.r*2.15,sh=z.r*2.65;ctx.drawImage(sprites.zombie,-sw/2,-sh/2,sw,sh);ctx.restore();}
       else {ctx.fillStyle=z.color;ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#bdc5a3';ctx.fillRect(z.x-5,z.y-4,3,3);ctx.fillRect(z.x+3,z.y-4,3,3);}
-      if(z.hp<z.maxHp){ctx.fillStyle='#321f1c';ctx.fillRect(z.x-z.r,z.y-z.r-7,z.r*2,3);ctx.fillStyle='#b44f43';ctx.fillRect(z.x-z.r,z.y-z.r-7,z.r*2*Math.max(0,z.hp/z.maxHp),3);}
+      if(z.boss){ctx.fillStyle='#ffd99a';ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.fillText('ELITE',z.x,z.y-z.r-14);}
+      if(z.hp<z.maxHp||z.boss){ctx.fillStyle='#321f1c';ctx.fillRect(z.x-z.r,z.y-z.r-7,z.r*2,3);ctx.fillStyle=z.boss?'#e8a34e':'#b44f43';ctx.fillRect(z.x-z.r,z.y-z.r-7,z.r*2*Math.max(0,z.hp/z.maxHp),3);}
     });
     effects.forEach(e=>{const a=Math.max(0,e.life/e.max);if(e.type==='blast'){ctx.globalAlpha=a*.55;ctx.fillStyle='#f4a555';ctx.beginPath();ctx.arc(e.x,e.y,e.r*(1-a*.45),0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}else{ctx.strokeStyle='#f3e7bd';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(e.x-e.dy*22,e.y+e.dx*22);ctx.lineTo(e.x+e.dy*22,e.y-e.dx*22);ctx.stroke();}});
     const target=aimTarget(),angle=Math.atan2(target.y-player.y,target.x-player.x);
