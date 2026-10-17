@@ -1,0 +1,6 @@
+24 Survival Pixel Art Icons by Jesper Brun Halfter
+Source: https://jehal.itch.io/24-survival-pixel-art-icons
+License: Creative Commons Attribution 3.0 Unported (CC BY 3.0)
+License text: https://creativecommons.org/licenses/by/3.0/
+
+The icons are included unchanged and scaled for in-game loot and supply-bin displays.

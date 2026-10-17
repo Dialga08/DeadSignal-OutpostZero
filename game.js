@@ -40,6 +40,17 @@
   loadSprite('operatorHeavy','assets/kenney/characters/operator-heavy.png');
   loadSprite('zombie','assets/kenney/characters/zombie.png');
   loadSprite('survivor','assets/kenney/characters/survivor.png');
+  const LOOT_ICON_FILES = {
+    akm:'AKM.png', backpack:'Backpack.png', bandage:'Bandage.png', baseballBat:'BaseballBat.png',
+    bayonet:'Bayonet.png', cannedFood:'CannedFood.png', cap:'Cap.png', fireAxe:'FireAxe.png',
+    flashbang:'Flashbang.png', fn45:'FN45.png', freshFood:'FreshFood.png', grenade:'Grenade.png',
+    heGrenade:'HE Grenade.png', hikingBoots:'HikingBoots.png', jeans:'Jeans.png', m4:'M4.png',
+    machete:'Machete.png', medicKit:'MedicKit.png', mp5k:'MP5K.png', runningShoes:'RunningShoes.png',
+    sawedOff:'SawedOff.png', sneakers:'Sneakers.png', tshirt:'Tshirt.png', windJacket:'WindJacket.png'
+  };
+  Object.entries(LOOT_ICON_FILES).forEach(([name,file])=>loadSprite('loot-'+name,'assets/survival-items/'+encodeURIComponent(file)));
+  const WEAPON_LOOT_ICON = {pistol:'fn45',rifle:'m4',grenade:'grenade',rpg:'heGrenade',minigun:'akm'};
+  const randomLootIcon = (choices=Object.keys(LOOT_ICON_FILES))=>choices[Math.floor(Math.random()*choices.length)];
   // Twice the width and height gives four times the explorable area.
   const WORLD = { w: 4400, h: 3200 };
   const CITY_CELL = 260;
@@ -92,8 +103,16 @@
   }
   function selectedChar() { return rosterData.find(c => c.id === save.selected) || rosterData[0]; }
   function updateTokens() { $('tokenCount').textContent = save.tokens; $('tokenCount2').textContent = save.tokens; }
-  function showToast(message) {
-    const el = $('toast'); el.textContent = message; el.hidden = false; toastTimer = 3;
+  function showToast(message, iconName) {
+    const el = $('toast');
+    el.replaceChildren();
+    el.classList.toggle('has-icon',Boolean(iconName&&LOOT_ICON_FILES[iconName]));
+    if(iconName&&LOOT_ICON_FILES[iconName]) {
+      const icon=document.createElement('img');icon.src='assets/survival-items/'+encodeURIComponent(LOOT_ICON_FILES[iconName]);icon.alt='';icon.setAttribute('aria-hidden','true');
+      el.appendChild(icon);
+    }
+    const text=document.createElement('span');text.textContent=message;el.appendChild(text);
+    el.hidden = false; toastTimer = 3;
   }
   function hideToast() { $('toast').hidden = true; }
 
@@ -169,7 +188,7 @@
     ];
     const cx=WORLD.w/2,cy=WORLD.h/2;
     const spots = [[cx-310,cy-280],[cx-980,cy-1120],[cx+930,cy-1120],[cx-1570,cy-120],[cx-75,cy+130],[cx+1120,cy+680],[cx-1580,cy+800],[cx-920,cy+1200]];
-    templates.forEach((t,i) => buildings.push({name:t[0],type:t[1],color:t[2],x:spots[i][0],y:spots[i][1],w:190,h:142,looted:false,lootClaimed:false,supplies:['store','depot','clinic'].includes(t[1]),variant:i}));
+    templates.forEach((t,i) => buildings.push({name:t[0],type:t[1],color:t[2],x:spots[i][0],y:spots[i][1],w:190,h:142,looted:false,lootClaimed:false,lootIcon:randomLootIcon(),supplies:['store','depot','clinic'].includes(t[1]),variant:i}));
     // Deterministic districts keep parks, dense blocks, and overgrown streets in consistent places.
     const cols=Math.ceil(WORLD.w/CITY_CELL),rows=Math.ceil(WORLD.h/CITY_CELL);
     const noise=(x,y,s=0)=>{const v=Math.sin(x*127.1+y*311.7+s*74.7)*43758.5453;return v-Math.floor(v);};
@@ -365,7 +384,7 @@
         if(b.lootClaimed){showToast('The supply bin is empty.');return;}
         b.lootClaimed=true;b.looted=true;
         const found=70+Math.floor(Math.random()*61);credits+=found;
-        showToast('Supplies recovered from the '+b.name.toLowerCase()+': +'+found+'.');return;
+        showToast('Supplies recovered from the '+b.name.toLowerCase()+': +'+found+'.',b.lootIcon);return;
       }
       if(near?.kind==='exit') {
         const b=insideBuilding.building;insideBuilding=null;
@@ -380,12 +399,12 @@
       if(b.looted){showToast(b.name+' has already been searched.');return;}
       b.looted=true;
       const roll=Math.random();
-      if(roll<.24){const weapons=['pistol','rifle','grenade','rpg','minigun'];const found=weapons[Math.floor(Math.random()*weapons.length)];player.weapon=found;player.ammo=magazineSize(found);player.reloadLeft=0;showToast('Found a ' + found.toUpperCase() + ' in the ' + b.name.toLowerCase() + '!');}
-      else if(roll<.47){player.armor+=25;showToast('Armor plates found. +25 armor.');}
-      else if(roll<.65){bombCount++;showToast('Found a bomb. Press Q to throw it.');}
-      else if(roll<.77){airstrikeCount++;showToast('Radio codes found. Press F for an airstrike.');}
-      else if(roll<.9){player.hp=Math.min(player.maxHp,player.hp+35);showToast('Medical supplies: +35 health.');}
-      else {credits+=35;showToast('Supply cache: +35 supplies.');}
+      if(roll<.24){const weapons=['pistol','rifle','grenade','rpg','minigun'];const found=weapons[Math.floor(Math.random()*weapons.length)];player.weapon=found;player.ammo=magazineSize(found);player.reloadLeft=0;showToast('Found a ' + found.toUpperCase() + ' in the ' + b.name.toLowerCase() + '!',WEAPON_LOOT_ICON[found]);}
+      else if(roll<.47){player.armor+=25;showToast('Armor plates found. +25 armor.',randomLootIcon(['cap','windJacket','jeans','hikingBoots','sneakers','runningShoes']));}
+      else if(roll<.65){bombCount++;showToast('Found a bomb. Press Q to throw it.',randomLootIcon(['grenade','heGrenade','flashbang']));}
+      else if(roll<.77){airstrikeCount++;showToast('Radio codes found. Press F for an airstrike.',randomLootIcon(['backpack','flashbang']));}
+      else if(roll<.9){player.hp=Math.min(player.maxHp,player.hp+35);showToast('Medical supplies: +35 health.',randomLootIcon(['bandage','medicKit']));}
+      else {credits+=35;showToast('Supply cache: +35 supplies.',randomLootIcon(['cannedFood','freshFood','backpack']));}
       return;
     }
     if(near?.kind==='survivor') {
@@ -839,6 +858,7 @@
     ctx.fillStyle='#e4d298';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('EXIT · E',320,411);
     ctx.fillStyle='#27312c';ctx.fillRect(452,83,118,96);ctx.fillStyle='#41483e';ctx.fillRect(460,91,102,80);ctx.fillStyle='#303831';ctx.fillRect(468,99,86,62);
     ctx.fillStyle=insideBuilding.building.lootClaimed?'#696b5c':'#a58d4f';ctx.fillRect(484,112,56,43);
+    if(!insideBuilding.building.lootClaimed){const lootSprite=sprites['loot-'+insideBuilding.building.lootIcon];if(lootSprite){ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(lootSprite,496,114,32,32);ctx.restore();}}
     ctx.fillStyle='#252c27';ctx.fillRect(480,108,64,8);ctx.fillRect(480,155,64,7);ctx.fillRect(480,108,7,54);ctx.fillRect(537,108,7,54);
     ctx.fillStyle='#f1d887';ctx.font='bold 13px sans-serif';ctx.fillText(insideBuilding.building.lootClaimed?'EMPTY':'SUPPLIES',512,76);
     ctx.fillStyle='#d2c7a6';ctx.font='12px sans-serif';ctx.fillText(insideBuilding.building.name,320,20);
