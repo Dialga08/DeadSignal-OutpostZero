@@ -21,6 +21,7 @@
   loadPixelTile('rock','assets/pixel_art_wasteland/Tilesets/rockWall01.png');
   loadPixelTile('wood','assets/pixel_art_wasteland/Tilesets/woodWall01.png');
   const WORLD = { w: 2200, h: 1600 };
+  const CAMERA_ZOOM = 1.32;
   const SAVE_KEY = 'deadSignalSaveV1';
   const rosterData = [
     { id:'rookie', name:'Rookie', rarity:'Common', weapon:'knife', hp:85, attack:1.01, speed:98, color:'#c8d5cb', size:14, desc:'A steady recruit. Starts with a combat knife.' },
@@ -129,7 +130,7 @@
       ['RUNDOWN HOUSE','house','#8b7770'],['SUPPLY SHED','store','#9f8b68']
     ];
     const spots = [[310,290],[850,240],[1580,300],[420,930],[1100,1220],[1800,900],[1780,1300],[730,650]];
-    templates.forEach((t,i) => buildings.push({name:t[0],type:t[1],color:t[2],x:spots[i][0],y:spots[i][1],w:110,h:78,looted:false}));
+    templates.forEach((t,i) => buildings.push({name:t[0],type:t[1],color:t[2],x:spots[i][0],y:spots[i][1],w:142,h:104,looted:false}));
   }
 
   function resizeCanvas() {
@@ -208,14 +209,15 @@
 
   function spawnZombie() {
     const side=Math.floor(Math.random()*4), margin=45;
-    let x=side===0?camera.x-30:side===1?camera.x+dimensions().w+30:camera.x+Math.random()*dimensions().w;
-    let y=side===2?camera.y-30:side===3?camera.y+dimensions().h+30:camera.y+Math.random()*dimensions().h;
+    const view=dimensions(), viewW=view.w/CAMERA_ZOOM, viewH=view.h/CAMERA_ZOOM;
+    let x=side===0?camera.x-30:side===1?camera.x+viewW+30:camera.x+Math.random()*viewW;
+    let y=side===2?camera.y-30:side===3?camera.y+viewH+30:camera.y+Math.random()*viewH;
     x=Math.max(margin,Math.min(WORLD.w-margin,x));y=Math.max(margin,Math.min(WORLD.h-margin,y));
     const brute=wave>2&&Math.random()<Math.min(.35,.08+wave*.02);
     waveSpawned++;zombies.push({x,y,r:brute?17:12,hp:brute?3+Math.floor(wave/3):1+Math.floor(wave/5),maxHp:brute?3+Math.floor(wave/3):1+Math.floor(wave/5),speed:brute?25+wave:34+Math.min(wave*1.5,28),damage:brute?13:8,attackTimer:0,color:brute?'#91715e':'#87947b',dead:false});
   }
   function aimTarget() {
-    const mouseWorld={x:pointer.x+camera.x,y:pointer.y+camera.y};
+    const mouseWorld={x:pointer.x/CAMERA_ZOOM+camera.x,y:pointer.y/CAMERA_ZOOM+camera.y};
     if(!autoAim && (pointer.down||touch.fire)) return mouseWorld;
     let target=null, d=Infinity;
     zombies.forEach(z=>{const n=Math.hypot(player.x-z.x,player.y-z.y);if(n<d){d=n;target=z;}});
@@ -330,7 +332,8 @@
       if(kills>=quota&&state==='playing')clearWave();
     }
     effects.forEach(e=>e.life-=dt);effects=effects.filter(e=>e.life>0);
-    const dim=dimensions();camera.x=Math.max(0,Math.min(WORLD.w-dim.w,player.x-dim.w/2));camera.y=Math.max(0,Math.min(WORLD.h-dim.h,player.y-dim.h/2));
+    const dim=dimensions(),viewW=dim.w/CAMERA_ZOOM,viewH=dim.h/CAMERA_ZOOM;
+    camera.x=Math.max(0,Math.min(WORLD.w-viewW,player.x-viewW/2));camera.y=Math.max(0,Math.min(WORLD.h-viewH,player.y-viewH/2));
     updateHud();
   }
 
@@ -376,7 +379,7 @@
     if($('gameScreen').hidden||!player)return;
     const {w,h}=dimensions();
     ctx.clearRect(0,0,w,h);ctx.fillStyle='#202c28';ctx.fillRect(0,0,w,h);
-    ctx.save();ctx.translate(-camera.x,-camera.y);
+    ctx.save();ctx.scale(CAMERA_ZOOM,CAMERA_ZOOM);ctx.translate(-camera.x,-camera.y);
     ctx.imageSmoothingEnabled=false;ctx.fillStyle=tilePatterns.sand||'#625f55';ctx.fillRect(0,0,WORLD.w,WORLD.h);
     for(let bx=0;bx<WORLD.w;bx+=260) for(let by=0;by<WORLD.h;by+=260) {
       ctx.fillStyle=((bx/260+by/260)%2===0)?'#6a6659':'#5e6056';
@@ -404,12 +407,19 @@
       ctx.restore();
       if(i%8===0){ctx.strokeStyle='#353a34';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+9,y-5);ctx.lineTo(x+21,y+5);ctx.lineTo(x+31,y+1);ctx.stroke();}
     }
-    [[154,31,0],[523,291,.2],[1100,31,0],[1522,551,.2],[2050,1051,0],[780,811,.2]].forEach(([x,y,a])=>{
-      ctx.save();ctx.translate(x,y);ctx.rotate(a);
-      ctx.fillStyle='#222925';ctx.fillRect(-18,-9,36,18);
-      ctx.fillStyle='#59635a';ctx.fillRect(-12,-7,17,14);
-      ctx.fillStyle='#d9c87a';ctx.fillRect(12,-6,4,4);ctx.fillRect(12,2,4,4);
-      ctx.fillStyle='#111714';ctx.fillRect(-13,-12,8,4);ctx.fillRect(8,-12,8,4);ctx.fillRect(-13,8,8,4);ctx.fillRect(8,8,8,4);
+    [[154,31,0],[523,291,.2],[1100,31,0],[1522,551,.2],[2050,1051,0],[780,811,.2]].forEach(([x,y,a],i)=>{
+      ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.scale(1.65,1.65);
+      // Larger, damaged silhouettes make the abandoned cars easy to spot at a glance.
+      ctx.fillStyle='rgba(0,0,0,.34)';ctx.fillRect(-25,-10,52,23);
+      ctx.fillStyle=i%2?'#343b36':'#292f2b';ctx.strokeStyle='#141a17';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(-25,-8);ctx.lineTo(-17,-12);ctx.lineTo(13,-11);ctx.lineTo(25,-6);ctx.lineTo(23,8);ctx.lineTo(15,11);ctx.lineTo(-21,9);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle=i%2?'#626c62':'#59635a';ctx.beginPath();ctx.moveTo(-12,-8);ctx.lineTo(-5,-10);ctx.lineTo(7,-9);ctx.lineTo(11,-2);ctx.lineTo(-12,-2);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#202925';ctx.beginPath();ctx.moveTo(-10,1);ctx.lineTo(10,1);ctx.lineTo(15,8);ctx.lineTo(-14,7);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#b9b5a1';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-5,-9);ctx.lineTo(-1,-5);ctx.lineTo(-4,-2);ctx.moveTo(3,-8);ctx.lineTo(1,-5);ctx.lineTo(6,-3);ctx.stroke();
+      ctx.fillStyle='#a45f3d';ctx.fillRect(-22,-5,5,4);ctx.fillRect(12,4,7,3);ctx.fillRect(-4,7,5,2);
+      ctx.fillStyle='#d4bd72';ctx.fillRect(20,-5,3,3);ctx.fillRect(20,3,3,3);
+      ctx.fillStyle='#111714';ctx.fillRect(-18,-13,9,5);ctx.fillRect(10,-13,9,5);ctx.fillRect(-18,9,9,5);ctx.fillRect(10,9,9,5);
+      ctx.fillStyle='#858578';ctx.fillRect(-27,-8,4,4);ctx.fillRect(24,7,6,2);
       ctx.restore();
     });
     buildings.forEach(b=>{
