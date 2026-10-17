@@ -66,6 +66,10 @@ body{font-family:ui-monospace,"Courier New",monospace}
 .vital-label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
 .vital-label small{font-size:8px;letter-spacing:.12em;color:#c3cdbd;font-weight:900}
 .vital-label b{font-size:11px;color:#f1f4eb}
+.stat-tracker{display:flex;flex-wrap:wrap;gap:4px;margin:-1px 0 6px;min-height:17px;align-items:center}
+.stat-boost{display:inline-flex;gap:4px;align-items:center;padding:2px 5px;background:#26372b;border:1px solid #60774a;border-radius:3px;color:#d8e9b4;font-size:8px;line-height:1.2;white-space:nowrap}
+.stat-boost b{color:#c4e36b;font-size:7px;letter-spacing:.04em}
+.stat-empty{color:#9eaa9b;font-size:7px;letter-spacing:.1em;font-weight:800}
 .health-track,.xp-track{height:10px}
 .pause-overlay{position:absolute;inset:0;z-index:8;display:grid;place-items:center;background:#07100ecc;padding:18px}
 .pause-card{width:min(390px,100%);text-align:center;padding:24px}

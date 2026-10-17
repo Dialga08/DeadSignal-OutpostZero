@@ -182,7 +182,7 @@
     state='playing'; wave=1; quota=10; kills=0; credits=0; zombies=[]; bullets=[]; pickups=[]; effects=[]; survivor=null; bossTicketThisWave=false;
     worldTime=0; level=1; xp=0; xpNext=10; rescueTimer=45; autoAim=false; upgradeOpen=false; bombCount=1; airstrikeCount=0; insideBuilding=null;
     const c = selectedChar();
-    player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:c.hp,maxHp:c.hp,attack:c.attack,speed:c.speed,armor:0,fireRate:1,weapon:c.weapon,baseWeapon:c.weapon,color:c.color,invuln:0,ammo:magazineSize(c.weapon),reloadLeft:0};
+    player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:c.hp,maxHp:c.hp,attack:c.attack,speed:c.speed,armor:0,fireRate:1,baseStats:{hp:c.hp,attack:c.attack,speed:c.speed,fireRate:1},weapon:c.weapon,baseWeapon:c.weapon,color:c.color,invuln:0,ammo:magazineSize(c.weapon),reloadLeft:0};
     quota=10; waveSpawned=0; spawnAccumulator=0; buildMap(); resizeCanvas(); $('upgradePanel').hidden=true; $('prepBanner').hidden=true;
     $('charNameHud').textContent=c.name.toUpperCase(); $('aimHud').textContent='MANUAL AIM · R'; showToast('Manual fire: aim and hold the mouse button to shoot.');
     lastFrame=performance.now(); requestAnimationFrame(frame);
@@ -634,6 +634,15 @@
     if(!player)return;
     $('waveText').textContent=wave;$('killText').textContent=kills+' / '+quota;$('creditText').textContent='$'+credits;
     $('healthFill').style.width=Math.max(0,player.hp/player.maxHp*100)+'%';$('healthText').textContent=Math.max(0,Math.ceil(player.hp))+' / '+player.maxHp+(player.armor?' · '+Math.ceil(player.armor)+' armor':'');
+    const base=player.baseStats, boosts=[];
+    const percent=(value,initial)=>Math.round((value/initial-1)*100);
+    if(player.attack>base.attack)boosts.push(['DMG','+'+percent(player.attack,base.attack)+'%']);
+    if(player.fireRate>base.fireRate)boosts.push(['FIRE','+'+percent(player.fireRate,base.fireRate)+'%']);
+    if(player.speed>base.speed)boosts.push(['SPEED','+'+percent(player.speed,base.speed)+'%']);
+    if(player.maxHp>base.hp)boosts.push(['MAX HP','+'+(player.maxHp-base.hp)]);
+    if(player.armor>0)boosts.push(['ARMOR','+'+Math.ceil(player.armor)]);
+    const tracker=$('statTracker'),trackerContent=boosts.length?boosts.map(([name,value])=>'<span class="stat-boost"><b>'+name+'</b> '+value+'</span>').join(''):'<span class="stat-empty">NO STAT BOOSTS</span>';
+    if(tracker.dataset.content!==trackerContent){tracker.innerHTML=trackerContent;tracker.dataset.content=trackerContent;}
     $('xpFill').style.width=Math.min(100,xp/xpNext*100)+'%';$('levelText').textContent='LV '+level;
     $('weaponHud').textContent=player.weapon.toUpperCase()+(player.weapon==='knife'?' · MELEE':player.reloadLeft>0?' · RELOADING '+player.reloadLeft.toFixed(1)+'s':' · '+player.ammo+'/'+magazineSize(player.weapon))+' · Q '+bombCount+' · F '+airstrikeCount;
     const near=nearestThing();
