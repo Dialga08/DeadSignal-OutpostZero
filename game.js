@@ -38,7 +38,7 @@
   const defaultSave = { tokens:3, unlocked:['rookie'], selected:'rookie', bestWave:0 };
   let save = loadSave();
   let state = 'menu', lastFrame = 0, toastTimer = 0, rescueTimer = 50, levelChoices = null;
-  let player, zombies = [], bullets = [], pickups = [], buildings = [], survivor = null, effects = [];
+  let player, zombies = [], bullets = [], pickups = [], buildings = [], cityBuildings = [], survivor = null, effects = [];
   let keys = {}, pointer = {x:0,y:0,down:false}, touch = {}, wave = 1, quota = 10, kills = 0, credits = 0, prepLeft = 20;
   let autoAim = false, upgradeOpen = false, fireCooldown = 0, bombCount = 1, airstrikeCount = 0, spawnAccumulator = 0;
   let worldTime = 0, level = 1, xp = 0, xpNext = 10, camera = {x:0,y:0}, waveSpawned = 0;
@@ -123,7 +123,7 @@
   }
 
   function buildMap() {
-    buildings = [];
+    buildings = []; cityBuildings = [];
     const templates = [
       ['SAFEHOUSE','shelter','#66856e'],['RADIO STATION','radio','#6f8790'],['CORNER STORE','store','#b58d5e'],
       ['CLINIC','clinic','#b98784'],['MOTOR POOL','depot','#87877a'],['RUNDOWN HOUSE','house','#8b7770'],
@@ -131,6 +131,13 @@
     ];
     const spots = [[170,170],[910,160],[1660,180],[180,850],[980,800],[1690,820],[420,1320],[1420,1320]];
     templates.forEach((t,i) => buildings.push({name:t[0],type:t[1],color:t[2],x:spots[i][0],y:spots[i][1],w:142,h:104,looted:false,variant:i}));
+    // Keep the larger city blocks to every other street crossing for wider, walkable streets.
+    for(let x=0;x<WORLD.w;x+=520) for(let y=0;y<WORLD.h;y+=520) {
+      const ruin={name:'RUINED BLOCK',x:x+72,y:y+62,w:176,h:188,variant:cityBuildings.length};
+      if(ruin.x+ruin.w>WORLD.w-35||ruin.y+ruin.h>WORLD.h-35)continue;
+      const nearFacility=buildings.some(b=>ruin.x<b.x+b.w+24&&ruin.x+ruin.w>b.x-24&&ruin.y<b.y+b.h+24&&ruin.y+ruin.h>b.y-24);
+      if(!nearFacility)cityBuildings.push(ruin);
+    }
   }
 
   function resizeCanvas() {
@@ -145,9 +152,9 @@
     const nearX=Math.max(b.x,Math.min(x,b.x+b.w)),nearY=Math.max(b.y,Math.min(y,b.y+b.h));
     return Math.hypot(x-nearX,y-nearY)<r;
   }
-  function blockedByBuilding(x,y,r) { return buildings.some(b=>circleHitsBuilding(x,y,r,b)); }
+  function blockedByBuilding(x,y,r) { return buildings.some(b=>circleHitsBuilding(x,y,r,b))||cityBuildings.some(b=>circleHitsBuilding(x,y,r,b)); }
   function pushOutOfBuildings(entity,r=entity.r) {
-    for(const b of buildings) {
+    for(const b of [...cityBuildings,...buildings]) {
       if(!circleHitsBuilding(entity.x,entity.y,r,b))continue;
       const nearX=Math.max(b.x,Math.min(entity.x,b.x+b.w)),nearY=Math.max(b.y,Math.min(entity.y,b.y+b.h));
       let dx=entity.x-nearX,dy=entity.y-nearY,d=Math.hypot(dx,dy);
@@ -213,6 +220,45 @@
     ctx.fillStyle='#9b7257';ctx.fillRect(x+w+2,y+h-19,8,5);ctx.fillRect(x-8,y+28,6,4);
     ctx.fillStyle='#e2d7b7';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(b.looted?'SEARCHED':b.name,x+w/2,y+h+22);
     if(b.type==='shelter'){ctx.strokeStyle='#9cbd89';ctx.lineWidth=3;ctx.strokeRect(x-5,y-5,w+10,h+10);}
+  }
+  function drawCityBuilding(b) {
+    const {x,y,w,h,variant:v}=b;
+    const walls=['#807568','#77796d','#8b7769','#6f7770'][v%4];
+    const roofs=['#424a45','#4b4842','#464d51','#514941'][v%4];
+    // Deep foundation, chipped concrete walls, and a roof broken into readable sections.
+    ctx.fillStyle='rgba(0,0,0,.42)';ctx.fillRect(x+12,y+14,w,h);
+    ctx.fillStyle='#373e39';ctx.fillRect(x-6,y-6,w+12,h+12);
+    ctx.fillStyle='#252d29';ctx.fillRect(x,y,w,h);
+    ctx.fillStyle=walls;ctx.fillRect(x+5,y+5,w-10,h-10);
+    ctx.fillStyle=roofs;ctx.fillRect(x+11,y+10,w-22,h-57);
+    ctx.strokeStyle='#9a8d73';ctx.lineWidth=3;ctx.strokeRect(x+10,y+9,w-20,h-55);
+    ctx.strokeStyle='rgba(197,185,153,.35)';ctx.lineWidth=1;
+    for(let seam=0;seam<5;seam++){const yy=y+23+seam*19;ctx.beginPath();ctx.moveTo(x+16,yy);ctx.lineTo(x+w-18,yy);ctx.stroke();}
+    // Roof vents, collapsed patches, and exposed beams vary from block to block.
+    ctx.fillStyle='#2b332f';ctx.fillRect(x+22,y+24,30,18);ctx.fillRect(x+w-52,y+33,27,14);
+    ctx.fillStyle='#747367';ctx.fillRect(x+25,y+27,24,4);ctx.fillRect(x+25,y+34,24,4);
+    ctx.fillStyle=v%2?'#292f2c':'#6c5545';ctx.beginPath();ctx.moveTo(x+w-73,y+13);ctx.lineTo(x+w-48,y+17);ctx.lineTo(x+w-61,y+43);ctx.lineTo(x+w-83,y+37);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#292e2b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+74,y+17);ctx.lineTo(x+83,y+44);ctx.lineTo(x+69,y+59);ctx.stroke();
+    // Broken front windows and a boarded entry establish scale and make each face legible.
+    const frontY=y+h-52;
+    ctx.fillStyle='#323934';ctx.fillRect(x+8,frontY,w-16,43);
+    for(let n=0;n<3;n++) {
+      const wx=x+15+n*49;
+      ctx.fillStyle='#242d29';ctx.fillRect(wx,frontY+5,34,26);
+      ctx.fillStyle=v%3===0?'#516967':'#5d6962';ctx.fillRect(wx+3,frontY+8,28,20);
+      ctx.strokeStyle='#b5aa8b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(wx+17,frontY+7);ctx.lineTo(wx+17,frontY+31);ctx.moveTo(wx+3,frontY+19);ctx.lineTo(wx+31,frontY+19);ctx.stroke();
+      ctx.strokeStyle='#d1c4a4';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(wx+5,frontY+10);ctx.lineTo(wx+14,frontY+17);ctx.lineTo(wx+9,frontY+26);ctx.stroke();
+    }
+    const doorX=x+w/2-11;
+    ctx.fillStyle='#202722';ctx.fillRect(doorX,frontY+8,23,35);ctx.fillStyle='#59493a';ctx.fillRect(doorX+3,frontY+12,17,31);
+    ctx.fillStyle='#bda976';ctx.fillRect(doorX+15,frontY+27,3,3);
+    // Faded storefront sign, apartment number, and scattered masonry give each ruin a different story.
+    ctx.fillStyle=v%2?'#473d34':'#363f3b';ctx.fillRect(x+22,y+h-68,w-44,9);
+    ctx.fillStyle=v%2?'#d0aa72':'#c2c1a8';ctx.font='bold 7px sans-serif';ctx.textAlign='center';
+    ctx.fillText(['NO ENTRY','BLOCK 04','SUPPLIES','EVACUATED'][v%4],x+w/2,y+h-61);
+    ctx.fillStyle='#777466';ctx.fillRect(x-9,y+h+4,18,6);ctx.fillRect(x+w-6,y-5,12,5);ctx.fillRect(x+w+2,y+34,7,11);
+    ctx.fillStyle='#9b7257';ctx.fillRect(x+8,y+h+7,9,5);ctx.fillRect(x+w-17,y+h+5,13,4);
+    ctx.fillStyle='#d0c6a8';ctx.fillRect(x-4,y+24,5,3);ctx.fillRect(x+w-1,y+h-23,7,4);
   }
   function nearestThing() {
     let best=null, dist=Infinity;
@@ -453,12 +499,7 @@
     ctx.clearRect(0,0,w,h);ctx.fillStyle='#202c28';ctx.fillRect(0,0,w,h);
     ctx.save();ctx.scale(CAMERA_ZOOM,CAMERA_ZOOM);ctx.translate(-camera.x,-camera.y);
     ctx.imageSmoothingEnabled=false;ctx.fillStyle=tilePatterns.sand||'#625f55';ctx.fillRect(0,0,WORLD.w,WORLD.h);
-    for(let bx=0;bx<WORLD.w;bx+=260) for(let by=0;by<WORLD.h;by+=260) {
-      ctx.fillStyle=((bx/260+by/260)%2===0)?'#6a6659':'#5e6056';
-      ctx.fillRect(bx+72,by+62,176,188);
-      ctx.fillStyle='#777263';ctx.fillRect(bx+70,by+60,180,8);ctx.fillRect(bx+70,by+60,8,192);
-      ctx.fillStyle='rgba(30,35,32,.18)';ctx.fillRect(bx+83,by+73,150,166);
-    }
+    cityBuildings.forEach(drawCityBuilding);
     for(let rx=0;rx<WORLD.w;rx+=260) {
       ctx.fillStyle=tilePatterns.stone||'#353a37';ctx.fillRect(rx,0,62,WORLD.h);
       ctx.fillStyle='#77766a';ctx.fillRect(rx-4,0,4,WORLD.h);ctx.fillRect(rx+62,0,5,WORLD.h);
