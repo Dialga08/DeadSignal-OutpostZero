@@ -48,3 +48,12 @@
 .roster-panel{min-height:240px}
 @media(max-width:520px){.menu-nav{gap:4px}.menu-tab{padding:10px 4px;font-size:9px}.city-scene{height:125px}}
 
+/* Chunky, high-contrast presentation for the pixel-art battlefield. */
+body{font-family:ui-monospace,"Courier New",monospace}
+.game-screen{border-radius:5px;border-width:2px}
+.game-screen canvas{image-rendering:pixelated}
+.hud-card,.combat-status,.prep-banner,.upgrade-panel,.levelup-card,.levelup-choices button{border-radius:4px}
+.hud-card,.combat-status{box-shadow:2px 2px 0 #090e0c}
+.hud-card small,.combat-status,.prep-banner small,.panel-head small{letter-spacing:.08em}
+.primary-button,.secondary-button,.spin-button,.menu-tab,.operator-card{border-radius:4px}
+
