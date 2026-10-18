@@ -102,6 +102,9 @@
       ctx.restore();
     }
   }
+  function playerIsMoving() {
+    return Boolean(keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD||keys.ArrowUp||keys.ArrowDown||keys.ArrowLeft||keys.ArrowRight||touch.up||touch.down||touch.left||touch.right);
+  }
 
   function renderRoster() {
     const root = $('roster'); root.innerHTML = '';
@@ -844,8 +847,7 @@
       else {ctx.fillRect(-player.r,-player.r*.72,player.r*2,player.r*1.44);ctx.fillStyle='#c4b789';ctx.fillRect(0,-4,player.r*1.7,8);}
       ctx.restore();
     } else {
-      const moving=keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD||keys.ArrowUp||keys.ArrowDown||keys.ArrowLeft||keys.ArrowRight||touch.up||touch.down||touch.left||touch.right;
-      drawHuman(player.x,player.y,angle,moving?Math.floor(worldTime*8)%4:0,player.r,player.color,player.invuln>0,player.weapon);
+      drawHuman(player.x,player.y,angle,playerIsMoving()?Math.floor(worldTime*8)%4:0,player.r,player.color,player.invuln>0,player.weapon);
     }
     ctx.restore();
     if(state==='playing'&&pointer.x>0){ctx.strokeStyle='rgba(235,229,196,.65)';ctx.beginPath();ctx.arc(pointer.x,pointer.y,7,0,Math.PI*2);ctx.moveTo(pointer.x-11,pointer.y);ctx.lineTo(pointer.x+11,pointer.y);ctx.moveTo(pointer.x,pointer.y-11);ctx.lineTo(pointer.x,pointer.y+11);ctx.stroke();}
@@ -875,7 +877,9 @@
     for(let i=0;i<4;i++){ctx.fillStyle=i%2?'#657065':'#92845f';ctx.fillRect(100+i*24,109,15,16);}
     const px=insideBuilding.playerX,py=insideBuilding.playerY;
     ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(px+2,py+5,14,7,0,0,Math.PI*2);ctx.fill();
-    drawHuman(px,py,0,0,player.r,player.color,player.invuln>0,player.weapon);
+    const aimX=(pointer.x-ox)/scale,aimY=(pointer.y-oy)/scale,angle=Math.atan2(aimY-py,aimX-px);
+    const frame=playerIsMoving()?Math.floor(worldTime*8)%4:0;
+    drawHuman(px,py,angle,frame,player.r,player.color,player.invuln>0,player.weapon);
     ctx.restore();
     ctx.fillStyle='#e6e0ca';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('WASD · MOVE     E · LOOT BIN / EXIT',w/2,h-20);
   }
