@@ -146,6 +146,8 @@ body{font-family:ui-monospace,"Courier New",monospace}
 .rank-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .rank-stats b{font-size:21px;color:#edf2e8}
 .rank-stats span{font-size:10px;color:#aab6a8}
+.rank-xp-progress{margin:10px 0 0;color:var(--lime);font-size:12px;font-weight:900}
+.rank-xp-note{margin:4px 0 12px;color:#aab6a8;font-size:10px;line-height:1.5}
 .upgrade-choice-label{margin:18px 0 8px;color:#b8c4b7;font-size:9px;font-weight:900;letter-spacing:.14em}
 .rank-choices{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
 .rank-choice{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-height:108px;padding:13px;background:#202e27;border:1px solid #43564a;border-radius:8px;color:var(--text);text-align:left;cursor:pointer}

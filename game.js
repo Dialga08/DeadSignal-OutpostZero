@@ -39,12 +39,13 @@
     { id:'rookie', name:'Bert Chester', sprite:'bert', rarity:'Common', weapon:'knife', hp:85, attack:1.01, speed:98, color:'#c8d5cb', size:14, desc:'A steady recruit. Starts with a combat knife.' }
   ];
   const rarityClass = (s) => s.toLowerCase();
-  const defaultSave = { coins:0, unlocked:['rookie'], selected:'rookie', unlockedWeapons:['operator'], selectedWeapon:'operator', operatorRank:1, rankBonus:{hp:0,attack:0,speed:0}, bestWave:0 };
+  const defaultSave = { coins:0, rankXp:0, unlocked:['rookie'], selected:'rookie', unlockedWeapons:['operator'], selectedWeapon:'operator', operatorRank:1, rankBonus:{hp:0,attack:0,speed:0}, bestWave:0 };
   let save = loadSave();
   let state = 'menu', lastFrame = 0, toastTimer = 0, rescueTimer = 50, levelChoices = null;
   let player, zombies = [], bullets = [], pickups = [], buildings = [], cityBlocks = [], cityBuildings = [], trees = [], parkFeatures = [], survivor = null, effects = [];
-  let keys = {}, pointer = {x:0,y:0,down:false}, touch = {}, wave = 1, quota = 10, kills = 0, credits = 0, prepLeft = 20;
+  let keys = {}, pointer = {x:0,y:0,down:false}, touch = {}, wave = 1, quota = 10, kills = 0, totalKills = 0, credits = 0, prepLeft = 20;
   let autoAim = false, upgradeOpen = false, fireCooldown = 0, bombCount = 1, airstrikeCount = 0, spawnAccumulator = 0, eliteDefeatedThisWave = false;
+  let runRewardsBanked = false;
   let worldTime = 0, level = 1, xp = 0, xpNext = 10, camera = {x:0,y:0}, drawBounds = null, waveSpawned = 0, insideBuilding = null;
 
   function loadSave() {
@@ -57,6 +58,7 @@
       const rankBonus=loaded.rankBonus&&typeof loaded.rankBonus==='object'?loaded.rankBonus:{};
       loaded.rankBonus={hp:Math.max(0,Math.floor(Number(rankBonus.hp)||0)),attack:Math.max(0,Math.floor(Number(rankBonus.attack)||0)),speed:Math.max(0,Math.floor(Number(rankBonus.speed)||0))};
       loaded.operatorRank=Math.min(25,1+loaded.rankBonus.hp+loaded.rankBonus.attack+loaded.rankBonus.speed);
+      loaded.rankXp=Math.max(0,Math.floor(Number(loaded.rankXp)||0));
       if (!Array.isArray(loaded.unlockedWeapons)) loaded.unlockedWeapons = ['operator'];
       if (!loaded.unlockedWeapons.includes('operator')) loaded.unlockedWeapons.unshift('operator');
       if (!loaded.unlockedWeapons.includes(loaded.selectedWeapon)) loaded.selectedWeapon = 'operator';
@@ -72,15 +74,18 @@
   }
   function selectedChar() { return rosterData.find(c => c.id === save.selected) || rosterData[0]; }
   function updateWallet() {
-    ['coinCount','coinCountArmory','coinCountBarracks','coinCountUpgrades'].forEach(id => { const node=$(id); if(node) node.textContent=save.coins; });
+    ['coinCount','coinCountArmory','coinCountBarracks'].forEach(id => { const node=$(id); if(node) node.textContent=save.coins; });
   }
   function operatorStats(c=selectedChar()) {
     return {hp:c.hp+save.rankBonus.hp*3,attack:c.attack+save.rankBonus.attack*0.02,speed:c.speed+save.rankBonus.speed};
   }
-  function rankUpCost() { return 50+(save.operatorRank-1)*25; }
+  function rankXpCost() { return 15+(save.operatorRank-1)*3; }
   function renderPermanentUpgrades() {
     const stats=operatorStats();
+    const cost=rankXpCost();
     $('operatorRank').textContent=save.operatorRank+' / 25';
+    $('rankXpCount').textContent=save.rankXp;
+    $('rankXpProgress').textContent=save.operatorRank>=25?'MAX RANK REACHED':'Next rank: '+save.rankXp+' / '+cost+' XP';
     $('rankHp').textContent=stats.hp;
     $('rankAttack').textContent=stats.attack.toFixed(2)+'×';
     $('rankSpeed').textContent=stats.speed;
@@ -88,17 +93,16 @@
     $('rankAttackBonus').textContent='+'+(save.rankBonus.attack*0.02).toFixed(2)+' total';
     $('rankSpeedBonus').textContent='+'+save.rankBonus.speed+' total';
     document.querySelectorAll('.rank-choice').forEach(button=>{
-      const choice=button.dataset.rankStat,cost=rankUpCost();
-      button.disabled=save.operatorRank>=25||save.coins<cost;
-      button.querySelector('strong').textContent=save.operatorRank>=25?'MAX RANK':'¢ '+cost;
+      button.disabled=save.operatorRank>=25||save.rankXp<cost;
+      button.querySelector('strong').textContent=save.operatorRank>=25?'MAX RANK':cost+' XP';
     });
   }
   function purchaseRank(stat) {
     if(save.operatorRank>=25){$('rankUpMessage').textContent='Bert has reached the maximum rank.';return;}
-    const cost=rankUpCost();
-    if(save.coins<cost){$('rankUpMessage').textContent='You need '+cost+' coins to reach the next rank.';return;}
+    const cost=rankXpCost();
+    if(save.rankXp<cost){$('rankUpMessage').textContent='You need '+cost+' XP for the next rank. Survive longer and eliminate more infected.';return;}
     if(!['hp','attack','speed'].includes(stat))return;
-    save.coins-=cost;save.operatorRank++;save.rankBonus[stat]++;saveNow();
+    save.rankXp-=cost;save.operatorRank++;save.rankBonus[stat]++;saveNow();
     renderPermanentUpgrades();renderRoster();
     const gain={hp:'+3 starting HP',attack:'+0.02 attack',speed:'+1 speed'}[stat];
     $('rankUpMessage').textContent='Rank '+save.operatorRank+' reached. Bert gains '+gain+'.';
@@ -319,7 +323,7 @@
   function beginGame() {
     $('menu').hidden = true; $('endScreen').hidden = true; $('gameScreen').hidden = false;
     $('pauseOverlay').hidden = true;
-    state='playing'; wave=1; quota=10; kills=0; credits=0; zombies=[]; bullets=[]; pickups=[]; effects=[]; survivor=null; eliteDefeatedThisWave=false;
+    state='playing'; wave=1; quota=10; kills=0; totalKills=0; credits=0; zombies=[]; bullets=[]; pickups=[]; effects=[]; survivor=null; eliteDefeatedThisWave=false;runRewardsBanked=false;
     worldTime=0; level=1; xp=0; xpNext=10; rescueTimer=45; autoAim=false; upgradeOpen=false; bombCount=1; airstrikeCount=0; insideBuilding=null;
     const c = selectedChar();
     const weapon=save.selectedWeapon==='operator'?c.weapon:save.selectedWeapon;
@@ -665,7 +669,7 @@
   function damageZombie(z,damage) {
     if(z.dead)return; z.hp-=damage;
     if(z.hp<=0){
-      z.dead=true;kills++;
+      z.dead=true;kills++;totalKills++;
       pickups.push({x:z.x-5,y:z.y,r:7,value:5+Math.min(wave,10),kind:'money'});
       const amount=1+Math.floor(Math.random()*2);pickups.push({x:z.x+6,y:z.y,r:5,value:amount,kind:'xp'});
       if(z.boss){pickups.push({x:z.x,y:z.y-12,r:9,value:40+Math.min(wave,20),kind:'money'});eliteDefeatedThisWave=true;}
@@ -782,10 +786,18 @@
     if(banked){save.coins+=banked;credits=0;saveNow();}
     return banked;
   }
+  function bankRunXp() {
+    if(runRewardsBanked)return {timeXp:0,killXp:0,total:0};
+    runRewardsBanked=true;
+    const timeXp=Math.floor(worldTime/60),killXp=Math.floor(totalKills/10),total=timeXp+killXp;
+    save.rankXp+=total;saveNow();
+    return {timeXp,killXp,total};
+  }
   function endGame() {
     if(state==='gameover')return;state='gameover';$('pauseOverlay').hidden=true;save.bestWave=Math.max(save.bestWave,wave);
-    const banked=bankRunMoney();saveNow();
-    $('endTitle').textContent='SIGNAL LOST';$('endSummary').textContent='You reached wave '+wave+', cleared '+kills+' infected, and banked '+banked+' coins. Best wave: '+save.bestWave+'.';
+    const banked=bankRunMoney(),rankReward=bankRunXp();saveNow();
+    const survived=Math.floor(worldTime),timeLabel=Math.floor(survived/60)+'m '+String(survived%60).padStart(2,'0')+'s';
+    $('endTitle').textContent='SIGNAL LOST';$('endSummary').textContent='You survived '+timeLabel+', eliminated '+totalKills+' infected, and earned '+rankReward.total+' rank XP ('+rankReward.timeXp+' survival + '+rankReward.killXp+' kills). You reached wave '+wave+' and banked '+banked+' coins. Best wave: '+save.bestWave+'.';
     $('gameScreen').hidden=true;$('endScreen').hidden=false;
   }
 
@@ -1068,6 +1080,8 @@
   }
   function leaveGame() {
     bankRunMoney();
+    const rankReward=bankRunXp();
+    $('rankUpMessage').textContent='Run complete: +'+rankReward.total+' rank XP ('+rankReward.timeXp+' survival + '+rankReward.killXp+' kills).';
     state='menu';keys={};touch={};pointer.down=false;upgradeOpen=false;
     $('pauseOverlay').hidden=true;$('upgradePanel').hidden=true;$('prepBanner').hidden=true;
     $('gameScreen').hidden=true;$('endScreen').hidden=true;$('menu').hidden=false;
