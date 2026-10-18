@@ -102,9 +102,11 @@
       ctx.restore();
     }
   }
-  function playerIsMoving() {
-    return Boolean(keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD||keys.ArrowUp||keys.ArrowDown||keys.ArrowLeft||keys.ArrowRight||touch.up||touch.down||touch.left||touch.right);
+  function updatePlayerMotion(fromX,fromY,toX,toY,dt) {
+    player.moving=Math.hypot(toX-fromX,toY-fromY)>.05;
+    player.walkTime=player.moving?player.walkTime+dt:0;
   }
+  function playerAnimationFrame() { return player?.moving?Math.floor(player.walkTime*8)%4:0; }
 
   function renderRoster() {
     const root = $('roster'); root.innerHTML = '';
@@ -163,7 +165,7 @@
     state='playing'; wave=1; quota=10; kills=0; credits=0; zombies=[]; bullets=[]; pickups=[]; effects=[]; survivor=null; bossTicketThisWave=false;
     worldTime=0; level=1; xp=0; xpNext=10; rescueTimer=45; autoAim=false; upgradeOpen=false; bombCount=1; airstrikeCount=0; insideBuilding=null;
     const c = selectedChar();
-    player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:c.hp,maxHp:c.hp,attack:c.attack,speed:c.speed,armor:0,fireRate:1,baseStats:{hp:c.hp,attack:c.attack,speed:c.speed,fireRate:1},weapon:c.weapon,baseWeapon:c.weapon,color:c.color,sprite:c.sprite||null,invuln:0,ammo:magazineSize(c.weapon),reloadLeft:0};
+    player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:c.hp,maxHp:c.hp,attack:c.attack,speed:c.speed,armor:0,fireRate:1,baseStats:{hp:c.hp,attack:c.attack,speed:c.speed,fireRate:1},weapon:c.weapon,baseWeapon:c.weapon,color:c.color,sprite:c.sprite||null,invuln:0,ammo:magazineSize(c.weapon),reloadLeft:0,moving:false,walkTime:0};
     quota=10; waveSpawned=0; spawnAccumulator=0; buildMap(); resizeCanvas(); $('upgradePanel').hidden=true; $('prepBanner').hidden=true;
     $('charNameHud').textContent=c.name.toUpperCase(); $('aimHud').textContent='MANUAL AIM · R'; showToast('Manual fire: aim and hold the mouse button to shoot.');
     lastFrame=performance.now(); requestAnimationFrame(frame);
@@ -527,21 +529,25 @@
   }
 
   function movePlayer(dt) {
+    const fromX=player.x,fromY=player.y;
     let mx=0,my=0;
     if(keys.KeyA||keys.ArrowLeft||touch.left)mx--;if(keys.KeyD||keys.ArrowRight||touch.right)mx++;
     if(keys.KeyW||keys.ArrowUp||touch.up)my--;if(keys.KeyS||keys.ArrowDown||touch.down)my++;
     const len=Math.hypot(mx,my)||1;
     moveCircle(player,mx/len*player.speed*dt,my/len*player.speed*dt);
+    updatePlayerMotion(fromX,fromY,player.x,player.y,dt);
   }
   function update(dt) {
     worldTime+=dt;if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)hideToast();}
     if(insideBuilding) {
+      const fromX=insideBuilding.playerX,fromY=insideBuilding.playerY;
       let mx=0,my=0;
       if(keys.KeyA||keys.ArrowLeft||touch.left)mx--;if(keys.KeyD||keys.ArrowRight||touch.right)mx++;
       if(keys.KeyW||keys.ArrowUp||touch.up)my--;if(keys.KeyS||keys.ArrowDown||touch.down)my++;
       const len=Math.hypot(mx,my)||1,speed=player.speed*dt;
       insideBuilding.playerX=Math.max(48,Math.min(592,insideBuilding.playerX+mx/len*speed));
       insideBuilding.playerY=Math.max(58,Math.min(352,insideBuilding.playerY+my/len*speed));
+      updatePlayerMotion(fromX,fromY,insideBuilding.playerX,insideBuilding.playerY,dt);
       updateHud();return;
     }
     fireCooldown=Math.max(0,fireCooldown-dt);if(player.invuln>0)player.invuln-=dt;updateReload(dt);
@@ -554,7 +560,9 @@
       let mx=0,my=0;
       if(keys.KeyA||keys.ArrowLeft||touch.left)mx--;if(keys.KeyD||keys.ArrowRight||touch.right)mx++;
       if(keys.KeyW||keys.ArrowUp||touch.up)my--;if(keys.KeyS||keys.ArrowDown||touch.down)my++;
+      const fromX=player.x,fromY=player.y;
       const len=Math.hypot(mx,my)||1;moveCircle(player,mx/len*player.speed*dt,my/len*player.speed*dt);
+      updatePlayerMotion(fromX,fromY,player.x,player.y,dt);
       if((autoAim&&zombies.length>0)||pointer.down||touch.fire)fireWeapon();
       spawnAccumulator+=dt;
       const maxAlive=Math.min(5,quota-kills), interval=Math.max(.55,1.45-wave*.03);
@@ -847,7 +855,7 @@
       else {ctx.fillRect(-player.r,-player.r*.72,player.r*2,player.r*1.44);ctx.fillStyle='#c4b789';ctx.fillRect(0,-4,player.r*1.7,8);}
       ctx.restore();
     } else {
-      drawHuman(player.x,player.y,angle,playerIsMoving()?Math.floor(worldTime*8)%4:0,player.r,player.color,player.invuln>0,player.weapon);
+      drawHuman(player.x,player.y,angle,playerAnimationFrame(),player.r,player.color,player.invuln>0,player.weapon);
     }
     ctx.restore();
     if(state==='playing'&&pointer.x>0){ctx.strokeStyle='rgba(235,229,196,.65)';ctx.beginPath();ctx.arc(pointer.x,pointer.y,7,0,Math.PI*2);ctx.moveTo(pointer.x-11,pointer.y);ctx.lineTo(pointer.x+11,pointer.y);ctx.moveTo(pointer.x,pointer.y-11);ctx.lineTo(pointer.x,pointer.y+11);ctx.stroke();}
@@ -878,8 +886,7 @@
     const px=insideBuilding.playerX,py=insideBuilding.playerY;
     ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(px+2,py+5,14,7,0,0,Math.PI*2);ctx.fill();
     const aimX=(pointer.x-ox)/scale,aimY=(pointer.y-oy)/scale,angle=Math.atan2(aimY-py,aimX-px);
-    const frame=playerIsMoving()?Math.floor(worldTime*8)%4:0;
-    drawHuman(px,py,angle,frame,player.r,player.color,player.invuln>0,player.weapon);
+    drawHuman(px,py,angle,playerAnimationFrame(),player.r,player.color,player.invuln>0,player.weapon);
     ctx.restore();
     ctx.fillStyle='#e6e0ca';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('WASD · MOVE     E · LOOT BIN / EXIT',w/2,h-20);
   }
