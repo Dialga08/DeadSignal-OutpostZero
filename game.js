@@ -114,7 +114,40 @@
       const c = rosterData.find(item => item.id === id); if (!c) return;
       const card = document.createElement('button');
       card.className = 'operator-card' + (save.selected === id ? ' selected' : '');
-      card.innerHTML = '<span class="operator-avatar" style="--operator-color:' + c.color + '">' + (c.weapon === 'heli' ? '✦' : c.weapon === 'tank' ? '▰' : '●') + '</span><span class="operator-info"><b>' + c.name + '</b><small>' + c.rarity + ' · ' + c.weapon.toUpperCase() + '</small><small>' + c.hp + ' HP · ' + c.attack.toFixed(2) + ' ATK · ' + c.speed + ' SPD</small></span><span class="select-mark">' + (save.selected === id ? 'DEPLOYED' : 'SELECT') + '</span>';
+      const portrait = document.createElement('span');
+      portrait.className = 'operator-avatar' + (c.sprite ? ' has-sprite' : '');
+      portrait.style.setProperty('--operator-color', c.color);
+      portrait.setAttribute('aria-hidden', 'true');
+      if (c.sprite && characterSprites[c.sprite]) {
+        const portraitCanvas = document.createElement('canvas');
+        portraitCanvas.className = 'operator-portrait';
+        portraitCanvas.width = 76;
+        portraitCanvas.height = 84;
+        const portraitCtx = portraitCanvas.getContext('2d');
+        portraitCtx.imageSmoothingEnabled = false;
+        const drawPortrait = () => {
+          const sprite = characterSprites[c.sprite];
+          if (!sprite.complete || !sprite.naturalWidth) return;
+          // Show Bert's first (front-facing) frame from the supplied sprite sheet.
+          portraitCtx.clearRect(0, 0, portraitCanvas.width, portraitCanvas.height);
+          portraitCtx.drawImage(sprite, 10, 4, 19, 21, 4, 0, 68, 84);
+        };
+        if (characterSprites[c.sprite].complete) drawPortrait();
+        else characterSprites[c.sprite].addEventListener('load', drawPortrait, {once:true});
+        portrait.appendChild(portraitCanvas);
+      } else {
+        portrait.textContent = c.weapon === 'heli' ? '✦' : c.weapon === 'tank' ? '▰' : '●';
+      }
+      const info = document.createElement('span');
+      info.className = 'operator-info';
+      const name = document.createElement('b'); name.textContent = c.name;
+      const type = document.createElement('small'); type.textContent = c.rarity + ' · ' + c.weapon.toUpperCase();
+      const stats = document.createElement('small'); stats.textContent = c.hp + ' HP · ' + c.attack.toFixed(2) + ' ATK · ' + c.speed + ' SPD';
+      info.append(name, type, stats);
+      const status = document.createElement('span');
+      status.className = 'select-mark';
+      status.textContent = save.selected === id ? 'DEPLOYED' : 'SELECT';
+      card.append(portrait, info, status);
       card.addEventListener('click', () => { save.selected = id; saveNow(); renderRoster(); });
       root.appendChild(card);
     });

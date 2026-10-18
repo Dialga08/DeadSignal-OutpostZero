@@ -81,3 +81,9 @@ body{font-family:ui-monospace,"Courier New",monospace}
 .primary-button,.secondary-button,.spin-button,.menu-tab,.operator-card{border-radius:4px}
 .toast.has-icon{display:flex;align-items:center;gap:9px}.toast.has-icon img{width:38px;height:38px;flex:0 0 38px;object-fit:contain;image-rendering:pixelated;background:#202b24;border:1px solid #53624f;border-radius:4px;padding:2px}.toast.has-icon span{min-width:0}.toast.has-icon .loot-glyph{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;box-sizing:border-box;background:#22392b;border:1px solid #b8d77b;border-radius:4px;color:#b8d77b;font:bold 10px ui-monospace,monospace;letter-spacing:-.5px;text-align:center;image-rendering:pixelated}
 .asset-credit a{color:var(--lime)}
+.operator-card{min-height:112px;gap:12px;padding:12px}
+.operator-avatar{flex:0 0 58px;width:58px;height:68px;overflow:hidden;border-radius:7px}
+.operator-avatar.has-sprite{background:linear-gradient(145deg,#445747,#26372d);border:1px solid #637958}
+.operator-portrait{display:block;width:54px;height:62px;image-rendering:pixelated}
+.operator-info{padding-right:2px}
+@media(max-width:500px){.operator-card{gap:8px;padding:8px}.operator-avatar{flex-basis:50px;width:50px;height:60px}.operator-portrait{width:46px;height:54px}.operator-info b{font-size:11px}.operator-info small{font-size:8px}}
