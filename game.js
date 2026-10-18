@@ -5,7 +5,7 @@
   const canvas = $('game');
   const ctx = canvas.getContext('2d');
   const characterSprites = {bert: new Image()};
-  characterSprites.bert.src = 'assets/characters/bert-chester.png?v=2';
+  characterSprites.bert.src = 'assets/characters/bert-chester.png?v=3';
   const WEAPON_LOOT_ICON = {pistol:'pistol',rifle:'rifle',grenade:'grenadeLauncher',rpg:'rpg',minigun:'minigun'};
   const WEAPON_LOOT_LABEL = {pistol:'FN-45 pistol',rifle:'M4 rifle',grenade:'grenade launcher',rpg:'RPG',minigun:'minigun'};
   const LOOT_ICON_GLYPHS = {money:'$',armor:'ARM',grenade:'G',radio:'RAD',bandage:'MED',medicKit:'MED',pistol:'PST',rifle:'RIF',grenadeLauncher:'GL',rpg:'RPG',minigun:'MG'};
@@ -83,11 +83,11 @@
     // Bert's sheet uses four directions (down, left, right, up), with four frames per row.
     const row=a<Math.PI/4||a>=Math.PI*7/4?2:a<Math.PI*3/4?0:a<Math.PI*5/4?1:a<Math.PI*7/4?3:2;
     const sprite=characterSprites.bert;
-    const frameWidth=sprite.naturalWidth/4,frameHeight=sprite.naturalHeight/4;
-    if(sprite.complete&&sprite.naturalWidth>0&&sprite.naturalHeight>0&&frameWidth>0&&frameHeight>0) {
-      const size=radius*3.25;
+    const frameWidth=19,frameHeight=21,frameX=10+(frame%4)*frameWidth,frameY=4+row*frameHeight;
+    if(sprite.complete&&sprite.naturalWidth>=86&&sprite.naturalHeight>=88) {
+      const size=radius*3.25,height=size*frameHeight/frameWidth;
       ctx.globalAlpha=invulnerable?.58:1;
-      ctx.drawImage(sprite,(frame%4)*frameWidth,row*frameHeight,frameWidth,frameHeight,x-size/2,y-size/2,size,size);
+      ctx.drawImage(sprite,frameX,frameY,frameWidth,frameHeight,x-size/2,y-height/2,size,height);
       ctx.globalAlpha=1;
     } else {
       ctx.fillStyle=invulnerable?'#f6a29a':color;ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();
