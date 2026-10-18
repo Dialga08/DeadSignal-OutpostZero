@@ -39,7 +39,7 @@
     { id:'rookie', name:'Bert Chester', sprite:'bert', rarity:'Common', weapon:'knife', hp:85, attack:1.01, speed:98, color:'#c8d5cb', size:14, desc:'A steady recruit. Starts with a combat knife.' }
   ];
   const rarityClass = (s) => s.toLowerCase();
-  const defaultSave = { coins:0, unlocked:['rookie'], selected:'rookie', unlockedWeapons:['operator'], selectedWeapon:'operator', bestWave:0 };
+  const defaultSave = { coins:0, unlocked:['rookie'], selected:'rookie', unlockedWeapons:['operator'], selectedWeapon:'operator', operatorRank:1, rankBonus:{hp:0,attack:0,speed:0}, bestWave:0 };
   let save = loadSave();
   let state = 'menu', lastFrame = 0, toastTimer = 0, rescueTimer = 50, levelChoices = null;
   let player, zombies = [], bullets = [], pickups = [], buildings = [], cityBlocks = [], cityBuildings = [], trees = [], parkFeatures = [], survivor = null, effects = [];
@@ -54,6 +54,9 @@
       // Bert Chester is the only playable character; remove older roster unlocks from saved games.
       loaded.unlocked = ['rookie'];
       loaded.selected = 'rookie';
+      const rankBonus=loaded.rankBonus&&typeof loaded.rankBonus==='object'?loaded.rankBonus:{};
+      loaded.rankBonus={hp:Math.max(0,Math.floor(Number(rankBonus.hp)||0)),attack:Math.max(0,Math.floor(Number(rankBonus.attack)||0)),speed:Math.max(0,Math.floor(Number(rankBonus.speed)||0))};
+      loaded.operatorRank=Math.min(25,1+loaded.rankBonus.hp+loaded.rankBonus.attack+loaded.rankBonus.speed);
       if (!Array.isArray(loaded.unlockedWeapons)) loaded.unlockedWeapons = ['operator'];
       if (!loaded.unlockedWeapons.includes('operator')) loaded.unlockedWeapons.unshift('operator');
       if (!loaded.unlockedWeapons.includes(loaded.selectedWeapon)) loaded.selectedWeapon = 'operator';
@@ -69,7 +72,36 @@
   }
   function selectedChar() { return rosterData.find(c => c.id === save.selected) || rosterData[0]; }
   function updateWallet() {
-    ['coinCount','coinCountArmory','coinCountBarracks'].forEach(id => { const node=$(id); if(node) node.textContent=save.coins; });
+    ['coinCount','coinCountArmory','coinCountBarracks','coinCountUpgrades'].forEach(id => { const node=$(id); if(node) node.textContent=save.coins; });
+  }
+  function operatorStats(c=selectedChar()) {
+    return {hp:c.hp+save.rankBonus.hp*3,attack:c.attack+save.rankBonus.attack*0.02,speed:c.speed+save.rankBonus.speed};
+  }
+  function rankUpCost() { return 50+(save.operatorRank-1)*25; }
+  function renderPermanentUpgrades() {
+    const stats=operatorStats();
+    $('operatorRank').textContent=save.operatorRank+' / 25';
+    $('rankHp').textContent=stats.hp;
+    $('rankAttack').textContent=stats.attack.toFixed(2)+'×';
+    $('rankSpeed').textContent=stats.speed;
+    $('rankHpBonus').textContent='+'+(save.rankBonus.hp*3)+' total';
+    $('rankAttackBonus').textContent='+'+(save.rankBonus.attack*0.02).toFixed(2)+' total';
+    $('rankSpeedBonus').textContent='+'+save.rankBonus.speed+' total';
+    document.querySelectorAll('.rank-choice').forEach(button=>{
+      const choice=button.dataset.rankStat,cost=rankUpCost();
+      button.disabled=save.operatorRank>=25||save.coins<cost;
+      button.querySelector('strong').textContent=save.operatorRank>=25?'MAX RANK':'¢ '+cost;
+    });
+  }
+  function purchaseRank(stat) {
+    if(save.operatorRank>=25){$('rankUpMessage').textContent='Bert has reached the maximum rank.';return;}
+    const cost=rankUpCost();
+    if(save.coins<cost){$('rankUpMessage').textContent='You need '+cost+' coins to reach the next rank.';return;}
+    if(!['hp','attack','speed'].includes(stat))return;
+    save.coins-=cost;save.operatorRank++;save.rankBonus[stat]++;saveNow();
+    renderPermanentUpgrades();renderRoster();
+    const gain={hp:'+3 starting HP',attack:'+0.02 attack',speed:'+1 speed'}[stat];
+    $('rankUpMessage').textContent='Rank '+save.operatorRank+' reached. Bert gains '+gain+'.';
   }
   function drawSlotMachine(canvas, rarity='common') {
     if(!canvas)return;
@@ -183,7 +215,8 @@
       info.className = 'operator-info';
       const name = document.createElement('b'); name.textContent = c.name;
       const type = document.createElement('small'); type.textContent = c.rarity + ' · ' + c.weapon.toUpperCase();
-      const stats = document.createElement('small'); stats.textContent = c.hp + ' HP · ' + c.attack.toFixed(2) + ' ATK · ' + c.speed + ' SPD';
+      const current=operatorStats(c);
+      const stats = document.createElement('small'); stats.textContent = current.hp + ' HP · ' + current.attack.toFixed(2) + ' ATK · ' + current.speed + ' SPD';
       info.append(name, type, stats);
       const status = document.createElement('span');
       status.className = 'select-mark';
@@ -192,7 +225,7 @@
       card.addEventListener('click', () => { save.selected = id; saveNow(); renderRoster(); });
       root.appendChild(card);
     });
-    $('rosterHint').textContent = save.unlocked.length + ' operator' + (save.unlocked.length === 1 ? '' : 's') + ' ready';
+    $('rosterHint').textContent = 'Rank '+save.operatorRank+' · permanent stats';
     const collectionCount = $('collectionCount');
     const collectionFill = $('collectionFill');
     if (collectionCount) collectionCount.textContent = save.unlocked.length + ' / ' + rosterData.length;
@@ -272,13 +305,15 @@
   }
 
   function setMenuView(view) {
-    const main=view==='main', armory=view==='armory', barracks=view==='barracks';
+    const main=view==='main', armory=view==='armory', barracks=view==='barracks', upgrades=view==='upgrades';
     document.querySelector('.briefing').hidden=!main;
     document.querySelector('.armory-panel').hidden=!armory;
     document.querySelector('.barracks-panel').hidden=!barracks;
+    document.querySelector('.upgrades-menu-panel').hidden=!upgrades;
     document.querySelector('.roster-panel').hidden=!barracks;
-    document.querySelector('.menu-grid').classList.toggle('single-view',main||armory||barracks);
+    document.querySelector('.menu-grid').classList.toggle('single-view',main||armory||barracks||upgrades);
     document.querySelectorAll('[data-menu-tab]').forEach(button=>button.classList.toggle('active',button.dataset.menuTab===view));
+    if(upgrades)renderPermanentUpgrades();
   }
 
   function beginGame() {
@@ -288,7 +323,8 @@
     worldTime=0; level=1; xp=0; xpNext=10; rescueTimer=45; autoAim=false; upgradeOpen=false; bombCount=1; airstrikeCount=0; insideBuilding=null;
     const c = selectedChar();
     const weapon=save.selectedWeapon==='operator'?c.weapon:save.selectedWeapon;
-    player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:c.hp,maxHp:c.hp,attack:c.attack,speed:c.speed,armor:0,fireRate:1,baseStats:{hp:c.hp,attack:c.attack,speed:c.speed,fireRate:1},weapon,baseWeapon:weapon,color:c.color,sprite:c.sprite||null,invuln:0,ammo:magazineSize(weapon),reloadLeft:0,moving:false,walkTime:0};
+    const base=operatorStats(c);
+    player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:base.hp,maxHp:base.hp,attack:base.attack,speed:base.speed,armor:0,fireRate:1,baseStats:{hp:base.hp,attack:base.attack,speed:base.speed,fireRate:1},weapon,baseWeapon:weapon,color:c.color,sprite:c.sprite||null,invuln:0,ammo:magazineSize(weapon),reloadLeft:0,moving:false,walkTime:0};
     quota=10; waveSpawned=0; spawnAccumulator=0; buildMap(); resizeCanvas(); $('upgradePanel').hidden=true; $('prepBanner').hidden=true;
     $('charNameHud').textContent=c.name.toUpperCase(); $('aimHud').textContent='MANUAL AIM · R'; showToast('Manual fire: aim and hold the mouse button to shoot.');
     lastFrame=performance.now(); requestAnimationFrame(frame);
@@ -1067,6 +1103,7 @@
   $('startButton').addEventListener('click',beginGame);
   $('weaponSpinButton').addEventListener('click',spinWeaponMachine);
   $('characterSpinButton').addEventListener('click',spinCharacterMachine);
+  document.querySelectorAll('.rank-choice').forEach(button=>button.addEventListener('click',()=>purchaseRank(button.dataset.rankStat)));
   $('upgradeButton').addEventListener('click',toggleUpgrades);
   $('closeUpgrade').addEventListener('click',()=>{upgradeOpen=false;$('upgradePanel').hidden=true;});
   $('nextWaveButton').addEventListener('click',startWave);
@@ -1085,5 +1122,5 @@
     b.addEventListener('pointerup',()=>set(false));b.addEventListener('pointercancel',()=>set(false));b.addEventListener('lostpointercapture',()=>set(false));
   });
   window.addEventListener('blur',()=>{keys={};touch={};pointer.down=false;});
-  updateWallet();renderRoster();renderWeaponInventory();drawSlotMachine($('weaponSlotCanvas'),'common');drawSlotMachine($('characterSlotCanvas'),'common');setMenuView("main");
+  updateWallet();renderRoster();renderWeaponInventory();renderPermanentUpgrades();drawSlotMachine($('weaponSlotCanvas'),'common');drawSlotMachine($('characterSlotCanvas'),'common');setMenuView("main");
 })();
