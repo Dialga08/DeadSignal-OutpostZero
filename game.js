@@ -36,16 +36,8 @@
   const CAMERA_ZOOM = 1.32;
   const SAVE_KEY = 'deadSignalSaveV1';
   const rosterData = [
-    { id:'rookie', name:'Bert Chester', sprite:'bert', rarity:'Common', weapon:'knife', hp:85, attack:1.01, speed:98, color:'#c8d5cb', size:14, desc:'A steady recruit. Starts with a combat knife.' },
-    { id:'sidearm', name:'Sidearm', rarity:'Uncommon', weapon:'pistol', hp:95, attack:1.05, speed:100, color:'#9db8c4', size:14, desc:'Quick shots and dependable handling.' },
-    { id:'scout', name:'Scout', rarity:'Rare', weapon:'rifle', hp:105, attack:1.15, speed:112, color:'#9ab77e', size:15, desc:'Fast operator with an assault rifle.' },
-    { id:'demolition', name:'Demolition', rarity:'Epic', weapon:'grenade', hp:125, attack:1.35, speed:94, color:'#d19b5a', size:16, desc:'Lobs explosive rounds into groups.' },
-    { id:'rocketeer', name:'Rocketeer', rarity:'Epic', weapon:'rpg', hp:145, attack:1.7, speed:91, color:'#c28168', size:16, desc:'Heavy rockets with a wide blast.' },
-    { id:'gunner', name:'Heavy Gunner', rarity:'Epic', weapon:'minigun', hp:165, attack:1.5, speed:88, color:'#88949a', size:17, desc:'A storm of bullets, limited mobility.' },
-    { id:'heli', name:'Blackhawk', rarity:'Legendary', weapon:'heli', hp:260, attack:2.2, speed:132, color:'#73977e', size:23, desc:'Legendary helicopter. Fast, armored, and airborne.' },
-    { id:'tank', name:'M1 Tank', rarity:'Legendary', weapon:'tank', hp:360, attack:2.8, speed:106, color:'#a08e60', size:25, desc:'Legendary armor with a heavy cannon.' }
+    { id:'rookie', name:'Bert Chester', sprite:'bert', rarity:'Common', weapon:'knife', hp:85, attack:1.01, speed:98, color:'#c8d5cb', size:14, desc:'A steady recruit. Starts with a combat knife.' }
   ];
-  const rarityRank = { Common:1, Uncommon:2, Rare:3, Epic:4, Legendary:5 };
   const rarityClass = (s) => s.toLowerCase();
   const defaultSave = { coins:0, unlocked:['rookie'], selected:'rookie', unlockedWeapons:['operator'], selectedWeapon:'operator', bestWave:0 };
   let save = loadSave();
@@ -59,6 +51,9 @@
     try {
       const parsed = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
       const loaded = parsed && Array.isArray(parsed.unlocked) ? {...defaultSave, ...parsed} : {...defaultSave};
+      // Bert Chester is the only playable character; remove older roster unlocks from saved games.
+      loaded.unlocked = ['rookie'];
+      loaded.selected = 'rookie';
       if (!Array.isArray(loaded.unlockedWeapons)) loaded.unlockedWeapons = ['operator'];
       if (!loaded.unlockedWeapons.includes('operator')) loaded.unlockedWeapons.unshift('operator');
       if (!loaded.unlockedWeapons.includes(loaded.selectedWeapon)) loaded.selectedWeapon = 'operator';
@@ -204,9 +199,7 @@
     if (collectionFill) collectionFill.style.width = (save.unlocked.length / rosterData.length * 100) + '%';
   }
 
-  const prizeTable = [
-    ['rookie',50], ['sidearm',27], ['scout',15], ['demolition',7], ['rocketeer',0.45], ['gunner',0.35], ['heli',0.1], ['tank',0.1]
-  ];
+  const prizeTable = [['rookie',100]];
   const weaponPrizes = [['pistol',50],['rifle',27],['grenade',15],['rpg',7.8],['minigun',0.2]];
   const weaponName = {operator:'Operator\'s default',pistol:'FN-45 Pistol',rifle:'M4 Rifle',grenade:'Grenade Launcher',rpg:'RPG',minigun:'Minigun'};
   const weaponRarity = {pistol:'common',rifle:'uncommon',grenade:'rare',rpg:'epic',minigun:'legendary'};
