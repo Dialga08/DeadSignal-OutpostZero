@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111a18">
   <title>Dead Signal: Outpost Zero</title>
-  <link rel="stylesheet" href="style.css?v=armory-bert-portrait-v1-20261018">
+  <link rel="stylesheet" href="style.css?v=garrison-rework-v1-20261018">
 </head>
 <body>
   <main class="app">
@@ -50,21 +50,37 @@
         </section>
         <section class="panel gacha-panel">
           <div class="section-heading">
-            <div><p class="eyebrow">RECRUITMENT</p><h2>Gumball Garrison</h2></div>
+            <div><p class="eyebrow">RECRUITMENT DIVISION</p><h2>Gumball Garrison</h2><p class="garrison-subtitle">One pull could change your whole squad.</p></div>
             <span class="token-badge small"><b id="tokenCount2">3</b> tickets</span>
           </div>
-          <div class="machine">
-            <div class="machine-cap">CHARACTER DRAW</div>
-            <div id="gumballs" class="gumballs" aria-label="Gumball machine">
-              <span class="gum gum-a"></span><span class="gum gum-b"></span><span class="gum gum-c"></span>
-              <span class="gum gum-d"></span><span class="gum gum-e"></span><span class="gum gum-f"></span>
-              <span class="machine-crank">✦</span>
+          <div class="garrison-layout">
+            <div class="machine">
+              <div class="machine-cap"><span>OUTPOST ISSUE</span><b>RECRUITMENT UNIT 07</b></div>
+              <div class="machine-dome">
+                <div id="gumballs" class="gumballs" aria-label="Gumball machine">
+                  <span class="gum gum-a"></span><span class="gum gum-b"></span><span class="gum gum-c"></span>
+                  <span class="gum gum-d"></span><span class="gum gum-e"></span><span class="gum gum-f"></span>
+                  <span class="gum gum-g"></span><span class="gum gum-h"></span>
+                </div>
+              </div>
+              <div class="machine-throat"></div>
+              <div class="machine-base"><span class="machine-window">PULL A RECRUIT</span><span class="machine-crank" aria-hidden="true">✦</span></div>
+              <button id="spinButton" class="spin-button">SPIN FOR A RECRUIT <span>· 1 TICKET</span></button>
+              <div id="gachaResult" class="gacha-result" aria-live="polite">Your first recruit is ready.</div>
             </div>
-            <button id="spinButton" class="spin-button">SPIN · 1 TICKET</button>
-            <div id="gachaResult" class="gacha-result">Your first recruit is ready.</div>
+            <aside class="garrison-intel">
+              <div class="intel-heading"><span>RECRUITMENT ODDS</span><span>PER SPIN</span></div>
+              <div class="odds">
+                <div class="odds-row common"><span><i></i>COMMON</span><b>50%</b><div><i style="width:50%"></i></div></div>
+                <div class="odds-row uncommon"><span><i></i>UNCOMMON</span><b>27%</b><div><i style="width:27%"></i></div></div>
+                <div class="odds-row rare"><span><i></i>RARE</span><b>15%</b><div><i style="width:15%"></i></div></div>
+                <div class="odds-row epic"><span><i></i>EPIC</span><b>7.8%</b><div><i style="width:7.8%"></i></div></div>
+                <div class="odds-row legendary"><span><i></i>LEGENDARY</span><b>0.2%</b><div><i style="width:.2%"></i></div></div>
+              </div>
+              <div class="collection-card"><span>SQUAD ROSTER</span><b id="collectionCount">1 / 8</b><div class="collection-track"><i id="collectionFill"></i></div><small>Duplicates return tickets.</small></div>
+              <p class="garrison-note">Tickets come from elite infected every fifth wave. Pick your operator in the Armory.</p>
+            </aside>
           </div>
-          <div class="odds"><b>DRAW ODDS</b><span>Common 50%</span><span>Uncommon 27%</span><span>Rare 15%</span><span>Epic 7%</span><span>Legendary 1%</span></div>
-          <p class="fineprint">Tokens are earned by clearing waves and completing rescue events.</p>
         </section>
       </div>
       <section class="panel roster-panel">
@@ -117,7 +133,7 @@
       <div class="panel end-card"><p class="eyebrow">MISSION REPORT</p><h2 id="endTitle">SIGNAL LOST</h2><p id="endSummary"></p><button id="returnMenu" class="primary-button">RETURN TO MENU</button></div>
     </section>
   </main>
-  <script src="game.js?v=armory-bert-portrait-v1-20261018"></script>
+  <script src="game.js?v=garrison-rework-v1-20261018"></script>
 </body>
 </html>
 

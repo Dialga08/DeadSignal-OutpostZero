@@ -152,6 +152,10 @@
       root.appendChild(card);
     });
     $('rosterHint').textContent = save.unlocked.length + ' operator' + (save.unlocked.length === 1 ? '' : 's') + ' ready';
+    const collectionCount = $('collectionCount');
+    const collectionFill = $('collectionFill');
+    if (collectionCount) collectionCount.textContent = save.unlocked.length + ' / ' + rosterData.length;
+    if (collectionFill) collectionFill.style.width = (save.unlocked.length / rosterData.length * 100) + '%';
   }
 
   const prizeTable = [
