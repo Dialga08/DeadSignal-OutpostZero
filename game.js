@@ -161,6 +161,7 @@
   }
   function drawHuman(x,y,angle,frame,radius,color,invulnerable,weapon) {
     const a=((angle%(Math.PI*2))+(Math.PI*2))%(Math.PI*2);
+    const weaponX=x+radius*.55;
     // Bert's sheet uses four directions (down, left, right, up), with four frames per row.
     const row=a<Math.PI/4||a>=Math.PI*7/4?2:a<Math.PI*3/4?0:a<Math.PI*5/4?1:a<Math.PI*7/4?3:2;
     const sprite=characterSprites.bert;
@@ -176,7 +177,7 @@
     if(weapon==='knife'&&weaponSprites.knife.complete&&weaponSprites.knife.naturalWidth) {
       // The supplied knife artwork points upward; rotate it to follow the aim direction.
       ctx.save();
-      ctx.translate(x+Math.cos(angle)*radius*.58,y+Math.sin(angle)*radius*.58);
+      ctx.translate(weaponX+Math.cos(angle)*radius*.58,y+Math.sin(angle)*radius*.58);
       ctx.rotate(angle+Math.PI/2);
       ctx.imageSmoothingEnabled=false;
       const knifeWidth=Math.max(8,radius*.72),knifeHeight=Math.max(20,radius*1.8);
@@ -184,7 +185,7 @@
       ctx.restore();
     } else if(weapon==='pistol'&&weaponSprites.pistol.complete&&weaponSprites.pistol.naturalWidth) {
       ctx.save();
-      ctx.translate(x+Math.cos(angle)*radius*.62,y+Math.sin(angle)*radius*.62);
+      ctx.translate(weaponX+Math.cos(angle)*radius*.62,y+Math.sin(angle)*radius*.62);
       ctx.rotate(angle);
       ctx.imageSmoothingEnabled=false;
       const pistolSize=radius*2.6;
@@ -192,7 +193,7 @@
       ctx.restore();
     } else if(weapon==='rifle'&&weaponSprites.rifle.complete&&weaponSprites.rifle.naturalWidth) {
       ctx.save();
-      ctx.translate(x+Math.cos(angle)*radius*.52,y+Math.sin(angle)*radius*.52);
+      ctx.translate(weaponX+Math.cos(angle)*radius*.52,y+Math.sin(angle)*radius*.52);
       ctx.rotate(angle);
       // The supplied sprite faces left, so mirror it to point along the aim direction.
       ctx.scale(-1,1);
@@ -202,7 +203,7 @@
       ctx.restore();
     } else if(weapon&&weapon!=='knife') {
       const length=weapon==='rpg'?radius*2.05:weapon==='minigun'?radius*1.8:radius*1.55;
-      ctx.save();ctx.translate(x,y);ctx.rotate(angle);
+      ctx.save();ctx.translate(weaponX,y);ctx.rotate(angle);
       ctx.fillStyle='#202923';ctx.fillRect(2,-radius*.28,length,radius*.38);
       ctx.fillStyle='#596157';ctx.fillRect(5,-radius*.2,length*.68,radius*.18);
       ctx.fillStyle='#151b18';ctx.fillRect(length+1,-radius*.2,Math.max(3,radius*.35),radius*.2);
