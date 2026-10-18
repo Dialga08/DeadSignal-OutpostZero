@@ -9,7 +9,7 @@
   const weaponSprites = {knife:new Image(),pistol:new Image(),rifle:new Image()};
   weaponSprites.knife.src = 'assets/weapons/combat-knife.svg?v=1';
   weaponSprites.pistol.src = 'assets/weapons/m17-pistol.png?v=1';
-  weaponSprites.rifle.src = 'assets/weapons/m4-rifle.png?v=1';
+  weaponSprites.rifle.src = 'assets/weapons/m4-rifle-transparent.png?v=1';
   const weaponSlotSprite = new Image();
   weaponSlotSprite.src = 'assets/gun-slot-machine.png?v=2';
   const characterSlotSprite = new Image();
@@ -194,6 +194,8 @@
       ctx.save();
       ctx.translate(x+Math.cos(angle)*radius*.52,y+Math.sin(angle)*radius*.52);
       ctx.rotate(angle);
+      // The supplied sprite faces left, so mirror it to point along the aim direction.
+      ctx.scale(-1,1);
       ctx.imageSmoothingEnabled=false;
       const rifleWidth=radius*4.2,rifleHeight=rifleWidth*weaponSprites.rifle.naturalHeight/weaponSprites.rifle.naturalWidth;
       ctx.drawImage(weaponSprites.rifle,-rifleWidth/2,-rifleHeight/2,rifleWidth,rifleHeight);
