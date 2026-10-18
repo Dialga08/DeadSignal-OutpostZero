@@ -4,58 +4,9 @@
   const $ = (id) => document.getElementById(id);
   const canvas = $('game');
   const ctx = canvas.getContext('2d');
-  const tilePatterns = {};
-  const sprites = {};
-  function loadSprite(name,url) {
-    const image=new Image();image.onload=()=>{sprites[name]=image;};image.src=url;
-  }
-  function loadTilePattern(name,url) {
-    const image=new Image();image.onload=()=>{tilePatterns[name]=ctx.createPattern(image,'repeat');};image.src=url;
-  }
-  function loadPixelTile(name, url, sourceX=0, sourceY=0) {
-    const image = new Image();
-    image.onload = () => {
-      const tile = document.createElement('canvas');
-      tile.width=32;tile.height=32;
-      const tileCtx=tile.getContext('2d');tileCtx.imageSmoothingEnabled=false;
-      tileCtx.drawImage(image,sourceX,sourceY,16,16,0,0,32,32);
-      tilePatterns[name]=ctx.createPattern(tile,'repeat');
-    };
-    image.src=url;
-  }
-  loadPixelTile('sand','assets/pixel_art_wasteland/Tilesets/sandFloor02.png');
-  loadPixelTile('stone','assets/pixel_art_wasteland/Tilesets/stoneFloor01.png');
-  loadPixelTile('rock','assets/pixel_art_wasteland/Tilesets/rockWall01.png');
-  loadPixelTile('wood','assets/pixel_art_wasteland/Tilesets/woodWall01.png');
-  loadTilePattern('grass','assets/kenney/city/grass.png');
-  loadTilePattern('grassAlt','assets/kenney/city/grass-variant.png');
-  loadTilePattern('asphalt','assets/kenney/city/asphalt.png');
-  loadTilePattern('pavement','assets/kenney/city/pavement.png');
-  loadTilePattern('brick','assets/kenney/city/brick.png');
-  loadSprite('treeGreen','assets/kenney/city/tree-green.png');
-  loadSprite('treeAutumn','assets/kenney/city/tree-autumn.png');
-  loadSprite('treeBluegreen','assets/kenney/city/tree-bluegreen.png');
-  loadSprite('operatorUnarmed','assets/kenney/characters/operator-unarmed.png');
-  loadSprite('operatorPistol','assets/kenney/characters/operator-pistol.png');
-  loadSprite('operatorHeavy','assets/kenney/characters/operator-heavy.png');
-  loadSprite('zombie','assets/kenney/characters/zombie.png');
-  loadSprite('survivor','assets/kenney/characters/survivor.png');
-  const ZOMBIE_DIRECTIONS=['north','east','south','west'];
-  ['idle','walk','attack','hurt'].forEach(animation=>ZOMBIE_DIRECTIONS.forEach(direction=>{
-    loadSprite('zombie-'+animation+'-'+direction,'assets/zombies-nes/'+animation+'/'+direction+'.png');
-  }));
-  const LOOT_ICON_FILES = {
-    akm:'AKM.png', backpack:'Backpack.png', bandage:'Bandage.png', baseballBat:'BaseballBat.png',
-    bayonet:'Bayonet.png', cannedFood:'CannedFood.png', cap:'Cap.png', fireAxe:'FireAxe.png',
-    flashbang:'Flashbang.png', fn45:'FN45.png', freshFood:'FreshFood.png', grenade:'Grenade.png',
-    heGrenade:'HE Grenade.png', hikingBoots:'HikingBoots.png', jeans:'Jeans.png', m4:'M4.png',
-    machete:'Machete.png', medicKit:'MedicKit.png', mp5k:'MP5K.png', runningShoes:'RunningShoes.png',
-    sawedOff:'SawedOff.png', sneakers:'Sneakers.png', tshirt:'Tshirt.png', windJacket:'WindJacket.png'
-  };
-  Object.entries(LOOT_ICON_FILES).forEach(([name,file])=>loadSprite('loot-'+name,'assets/survival-items/'+encodeURIComponent(file)));
-  const WEAPON_LOOT_ICON = {pistol:'fn45',rifle:'m4',grenade:'grenadeLauncher',rpg:'rpg',minigun:'minigun'};
+  const WEAPON_LOOT_ICON = {pistol:'pistol',rifle:'rifle',grenade:'grenadeLauncher',rpg:'rpg',minigun:'minigun'};
   const WEAPON_LOOT_LABEL = {pistol:'FN-45 pistol',rifle:'M4 rifle',grenade:'grenade launcher',rpg:'RPG',minigun:'minigun'};
-  const LOOT_ICON_GLYPHS = {money:'$',armor:'ARM',grenadeLauncher:'GL',rpg:'RPG',minigun:'MG',radio:'RAD'};
+  const LOOT_ICON_GLYPHS = {money:'$',armor:'ARM',grenade:'G',radio:'RAD',bandage:'MED',medicKit:'MED',pistol:'PST',rifle:'RIF',grenadeLauncher:'GL',rpg:'RPG',minigun:'MG'};
   // Twice the width and height gives four times the explorable area.
   const WORLD = { w: 4400, h: 3200 };
   const CITY_CELL = 260;
@@ -111,12 +62,9 @@
   function showToast(message, iconName) {
     const el = $('toast');
     el.replaceChildren();
-    const hasSprite=Boolean(iconName&&LOOT_ICON_FILES[iconName]), glyph=iconName&&LOOT_ICON_GLYPHS[iconName];
-    el.classList.toggle('has-icon',Boolean(hasSprite||glyph));
-    if(hasSprite) {
-      const icon=document.createElement('img');icon.src='assets/survival-items/'+encodeURIComponent(LOOT_ICON_FILES[iconName]);icon.alt='';icon.setAttribute('aria-hidden','true');
-      el.appendChild(icon);
-    } else if(glyph) {
+    const glyph=iconName&&LOOT_ICON_GLYPHS[iconName];
+    el.classList.toggle('has-icon',Boolean(glyph));
+    if(glyph) {
       const icon=document.createElement('span');icon.className='loot-glyph';icon.textContent=glyph;icon.setAttribute('aria-hidden','true');el.appendChild(icon);
     }
     const text=document.createElement('span');text.textContent=message;el.appendChild(text);
@@ -275,7 +223,6 @@
     ctx.fillStyle='#3c443d';ctx.fillRect(x-7,y-7,w+14,h+14);
     ctx.fillStyle='#222b26';ctx.fillRect(x,y,w,h);
     ctx.fillStyle=wall;ctx.fillRect(x+4,y+4,w-8,h-8);
-    if(tilePatterns.brick){ctx.globalAlpha=.16;ctx.fillStyle=tilePatterns.brick;ctx.fillRect(x+4,y+4,w-8,h-8);ctx.globalAlpha=1;}
     // A framed roof with seams, water stains and missing patches.
     ctx.fillStyle=roof;ctx.fillRect(x+9,y+8,w-18,h-27);
     ctx.strokeStyle='#737568';ctx.lineWidth=2;ctx.strokeRect(x+9,y+8,w-18,h-27);
@@ -332,7 +279,6 @@
     ctx.fillStyle='#373e39';ctx.fillRect(x-6,y-6,w+12,h+12);
     ctx.fillStyle='#252d29';ctx.fillRect(x,y,w,h);
     ctx.fillStyle=walls;ctx.fillRect(x+5,y+5,w-10,h-10);
-    if(tilePatterns.brick){ctx.globalAlpha=.17;ctx.fillStyle=tilePatterns.brick;ctx.fillRect(x+5,y+5,w-10,h-10);ctx.globalAlpha=1;}
     ctx.fillStyle=roofs;ctx.fillRect(x+11,y+10,w-22,h-57);
     ctx.strokeStyle='#9a8d73';ctx.lineWidth=3;ctx.strokeRect(x+10,y+9,w-20,h-55);
     ctx.strokeStyle='rgba(197,185,153,.35)';ctx.lineWidth=1;
@@ -473,7 +419,7 @@
     const boss=wave%5===0&&waveSpawned===quota-1;
     const brute=wave>2&&Math.random()<Math.min(.35,.08+wave*.02);
     const hp=boss?18+wave*3:brute?3+Math.floor(wave/3):1+Math.floor(wave/5);
-    waveSpawned++;zombies.push({x,y,r:boss?24:brute?17:12,hp,maxHp:hp,speed:boss?22+Math.min(wave,16):brute?25+wave:34+Math.min(wave*1.5,28),damage:boss?18:brute?13:8,attackTimer:0,attackAnim:0,hurtTimer:0,facing:'south',walking:false,color:boss?'#bb5746':brute?'#91715e':'#87947b',boss,dead:false});
+    waveSpawned++;zombies.push({x,y,r:boss?24:brute?17:12,hp,maxHp:hp,speed:boss?22+Math.min(wave,16):brute?25+wave:34+Math.min(wave*1.5,28),damage:boss?18:brute?13:8,attackTimer:0,color:boss?'#bb5746':brute?'#91715e':'#87947b',boss,dead:false});
   }
   function aimTarget() {
     const mouseWorld={x:pointer.x/CAMERA_ZOOM+camera.x,y:pointer.y/CAMERA_ZOOM+camera.y};
@@ -534,7 +480,7 @@
       const amount=1+Math.floor(Math.random()*2);pickups.push({x:z.x+6,y:z.y,r:5,value:amount,kind:'xp'});
       if(z.boss){pickups.push({x:z.x,y:z.y-12,r:8,value:1,kind:'ticket'});bossTicketThisWave=true;}
       if(kills>=quota&&state==='playing')clearWave();
-    } else z.hurtTimer=.18;
+    }
   }
 
   function useBomb() {
@@ -587,12 +533,9 @@
       zombies.forEach(z=>{
         if(z.dead)return;
         const dx=player.x-z.x,dy=player.y-z.y,d=Math.hypot(dx,dy)||1;
-        z.facing=Math.abs(dx)>Math.abs(dy)?(dx>0?'east':'west'):(dy>0?'south':'north');
-        z.walking=d>player.r+z.r+2;
-        if(z.walking){moveCircle(z,dx/d*z.speed*dt,dy/d*z.speed*dt,z.r);}
-        else if(z.attackTimer<=0){z.attackTimer=.8;z.attackAnim=.34;let damage=z.damage;if(player.armor>0){const absorbed=Math.min(player.armor,damage);player.armor-=absorbed;damage-=absorbed;}player.hp-=damage;player.invuln=.25;if(player.hp<=0)endGame();}
+        if(d>player.r+z.r+2){moveCircle(z,dx/d*z.speed*dt,dy/d*z.speed*dt,z.r);}
+        else if(z.attackTimer<=0){z.attackTimer=.8;let damage=z.damage;if(player.armor>0){const absorbed=Math.min(player.armor,damage);player.armor-=absorbed;damage-=absorbed;}player.hp-=damage;player.invuln=.25;if(player.hp<=0)endGame();}
         z.attackTimer=Math.max(0,z.attackTimer-dt);
-        z.attackAnim=Math.max(0,z.attackAnim-dt);z.hurtTimer=Math.max(0,z.hurtTimer-dt);
       });
       bullets.forEach(b=>{
         b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
@@ -689,9 +632,6 @@
     const x=b.x+68,y=b.y+58,w=188,h=198,v=b.variation;
     if(drawBounds&&(x+w<drawBounds.left||x>drawBounds.right||y+h<drawBounds.top||y>drawBounds.bottom))return;
     ctx.fillStyle=b.ground;ctx.fillRect(x,y,w,h);
-    const groundTexture=['park','suburbs','residential','overgrown'].includes(b.district)
-      ? (b.variation>.58?tilePatterns.grassAlt:tilePatterns.grass):tilePatterns.pavement;
-    if(groundTexture){ctx.globalAlpha=b.district==='park'||b.district==='overgrown' ? .42 : .28;ctx.fillStyle=groundTexture;ctx.fillRect(x,y,w,h);ctx.globalAlpha=1;}
     if(b.district==='park') {
       ctx.fillStyle='rgba(35,83,46,.32)';ctx.fillRect(x+12,y+15,w-24,h-30);
       ctx.fillStyle='#92866a';ctx.fillRect(x+5,y+h*.47,w-10,8);
@@ -718,8 +658,6 @@
   function drawTree(tree) {
     const x=tree.x+9,y=tree.y+10,v=tree.variant;
     if(drawBounds&&(x<drawBounds.left-38||x>drawBounds.right+38||y<drawBounds.top-50||y>drawBounds.bottom+38))return;
-    const treeSprite=[sprites.treeGreen,sprites.treeAutumn,sprites.treeBluegreen][v%3];
-    if(treeSprite){ctx.fillStyle='rgba(20,27,22,.36)';ctx.beginPath();ctx.ellipse(x+2,y+7,18,7,0,0,Math.PI*2);ctx.fill();ctx.drawImage(treeSprite,x-21,y-25,42,42);return;}
     ctx.fillStyle='rgba(20,27,22,.35)';ctx.fillRect(x-17,y+8,36,8);
     ctx.fillStyle='#4f4432';ctx.fillRect(x-3,y-1,7,20);ctx.fillRect(x-9,y+7,7,4);
     if(v===0) {
@@ -799,16 +737,12 @@
     ctx.clearRect(0,0,w,h);ctx.fillStyle='#202c28';ctx.fillRect(0,0,w,h);
     ctx.save();ctx.scale(CAMERA_ZOOM,CAMERA_ZOOM);ctx.translate(-camera.x,-camera.y);
     ctx.imageSmoothingEnabled=false;ctx.fillStyle='#536746';ctx.fillRect(0,0,WORLD.w,WORLD.h);
-    if(tilePatterns.grass){ctx.globalAlpha=.28;ctx.fillStyle=tilePatterns.grass;ctx.fillRect(0,0,WORLD.w,WORLD.h);ctx.globalAlpha=1;}
-    if(tilePatterns.sand){ctx.globalAlpha=.08;ctx.fillStyle=tilePatterns.sand;ctx.fillRect(0,0,WORLD.w,WORLD.h);ctx.globalAlpha=1;}
     cityBlocks.forEach(drawCityBlock);
     drawGroundFoliage();
     for(let rx=0;rx<WORLD.w;rx+=260) {
       if(rx+68<drawBounds.left||rx>drawBounds.right)continue;
       const top=Math.max(0,drawBounds.top),bottom=Math.min(WORLD.h,drawBounds.bottom),length=bottom-top;
       ctx.fillStyle='#484e48';ctx.fillRect(rx,top,62,length);
-      if(tilePatterns.asphalt){ctx.globalAlpha=.42;ctx.fillStyle=tilePatterns.asphalt;ctx.fillRect(rx,top,62,length);ctx.globalAlpha=1;}
-      if(tilePatterns.stone){ctx.globalAlpha=.2;ctx.fillStyle=tilePatterns.stone;ctx.fillRect(rx,top,62,length);ctx.globalAlpha=1;}
       ctx.fillStyle='#77766a';ctx.fillRect(rx-4,top,4,length);ctx.fillRect(rx+62,top,5,length);
       ctx.fillStyle='rgba(27,32,29,.34)';ctx.fillRect(rx+8,top,2,length);ctx.fillRect(rx+52,top,2,length);
       ctx.fillStyle='rgba(196,182,137,.72)';
@@ -819,8 +753,6 @@
       if(ry+59<drawBounds.top||ry>drawBounds.bottom)continue;
       const left=Math.max(0,drawBounds.left),right=Math.min(WORLD.w,drawBounds.right),length=right-left;
       ctx.fillStyle='#484e48';ctx.fillRect(left,ry,length,54);
-      if(tilePatterns.asphalt){ctx.globalAlpha=.42;ctx.fillStyle=tilePatterns.asphalt;ctx.fillRect(left,ry,length,54);ctx.globalAlpha=1;}
-      if(tilePatterns.stone){ctx.globalAlpha=.2;ctx.fillStyle=tilePatterns.stone;ctx.fillRect(left,ry,length,54);ctx.globalAlpha=1;}
       ctx.fillStyle='#77766a';ctx.fillRect(left,ry-4,length,4);ctx.fillRect(left,ry+54,length,5);
       ctx.fillStyle='rgba(27,32,29,.34)';ctx.fillRect(left,ry+8,length,2);ctx.fillRect(left,ry+44,length,2);
       ctx.fillStyle='rgba(196,182,137,.72)';
@@ -858,8 +790,7 @@
     trees.forEach(drawTree);
     buildings.forEach(drawBuilding);
     if(survivor){
-      if(sprites.survivor){ctx.drawImage(sprites.survivor,survivor.x-16,survivor.y-16,32,32);}
-      else {ctx.fillStyle=survivor.following?'#b6d59c':'#f1d083';ctx.beginPath();ctx.arc(survivor.x,survivor.y,9,0,Math.PI*2);ctx.fill();}
+      ctx.fillStyle=survivor.following?'#b6d59c':'#f1d083';ctx.beginPath();ctx.arc(survivor.x,survivor.y,9,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.fillText(survivor.following?'FOLLOWING':'SURVIVOR · E',survivor.x,survivor.y-16);
       if(survivor.following){ctx.strokeStyle='rgba(182,213,156,.45)';ctx.beginPath();ctx.moveTo(survivor.x,survivor.y);ctx.lineTo(survivor.shelter.x,survivor.shelter.y);ctx.stroke();}
     }
@@ -867,11 +798,15 @@
     bullets.forEach(b=>{ctx.fillStyle=b.kind==='explosive'?'#f3a45e':'#f1e6a8';ctx.beginPath();ctx.arc(b.x,b.y,b.kind==='explosive'?5:3,0,Math.PI*2);ctx.fill();});
     zombies.forEach(z=>{
       if(z.boss){ctx.fillStyle='rgba(234,115,76,.2)';ctx.beginPath();ctx.arc(z.x,z.y,z.r+8,0,Math.PI*2);ctx.fill();}
-      const animation=z.hurtTimer>0?'hurt':z.attackAnim>0?'attack':z.walking?'walk':'idle';
-      const zombieSprite=sprites['zombie-'+animation+'-'+(z.facing||'south')];
-      if(zombieSprite){const frameCount=Math.max(1,Math.floor(zombieSprite.width/16));const frame=animation==='hurt'?0:Math.floor(worldTime*(animation==='idle'?3:8))%frameCount;const sw=z.r*1.9,sh=z.r*3;ctx.drawImage(zombieSprite,frame*16,0,16,32,z.x-sw/2,z.y-sh/2,sw,sh);}
-      else if(sprites.zombie){const facing=Math.atan2(player.y-z.y,player.x-z.x);ctx.save();ctx.translate(z.x,z.y);ctx.rotate(facing+Math.PI/2);const sw=z.r*2.15,sh=z.r*2.65;ctx.drawImage(sprites.zombie,-sw/2,-sh/2,sw,sh);ctx.restore();}
-      else {ctx.fillStyle=z.color;ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#bdc5a3';ctx.fillRect(z.x-5,z.y-4,3,3);ctx.fillRect(z.x+3,z.y-4,3,3);}
+      const angle=Math.atan2(player.y-z.y,player.x-z.x);
+      ctx.save();ctx.translate(z.x,z.y);ctx.rotate(angle);
+      ctx.fillStyle='rgba(12,18,14,.38)';ctx.beginPath();ctx.ellipse(1,z.r*.58,z.r*.95,z.r*.38,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=z.color;ctx.fillRect(-z.r*.76,-z.r*.38,z.r*1.52,z.r*1.15);
+      ctx.fillStyle='#514b3c';ctx.fillRect(-z.r*.85,z.r*.4,z.r*.55,z.r*.62);ctx.fillRect(z.r*.3,z.r*.4,z.r*.55,z.r*.62);
+      ctx.fillStyle=z.boss?'#c68068':'#99a783';ctx.fillRect(-z.r*.66,-z.r*1.02,z.r*1.32,z.r*.68);
+      ctx.fillStyle='#25271f';ctx.fillRect(-z.r*.42,-z.r*.78,z.r*.22,z.r*.16);ctx.fillRect(z.r*.2,-z.r*.78,z.r*.22,z.r*.16);
+      ctx.fillStyle='#b04e3e';ctx.fillRect(-z.r*.2,-z.r*.48,z.r*.42,z.r*.08);
+      ctx.restore();
       if(z.boss){ctx.fillStyle='#ffd99a';ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.fillText('ELITE',z.x,z.y-z.r-14);}
       if(z.hp<z.maxHp||z.boss){ctx.fillStyle='#321f1c';ctx.fillRect(z.x-z.r,z.y-z.r-7,z.r*2,3);ctx.fillStyle=z.boss?'#e8a34e':'#b44f43';ctx.fillRect(z.x-z.r,z.y-z.r-7,z.r*2*Math.max(0,z.hp/z.maxHp),3);}
     });
@@ -882,9 +817,7 @@
     if(player.weapon==='heli'){ctx.fillRect(-player.r,-player.r/2,player.r*2,player.r);ctx.strokeStyle='#c1d2bd';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-player.r*1.5,-player.r*1.4);ctx.lineTo(player.r*1.5,-player.r*1.4);ctx.stroke();}
     else if(player.weapon==='tank'){ctx.fillRect(-player.r,-player.r*.72,player.r*2,player.r*1.44);ctx.fillStyle='#c4b789';ctx.fillRect(0,-4,player.r*1.7,8);}
     else {
-      const operator=player.weapon==='knife'?sprites.operatorUnarmed:player.weapon==='minigun'?sprites.operatorHeavy:sprites.operatorPistol;
-      if(operator){const sw=player.r*2.3,sh=player.r*2;ctx.globalAlpha=player.invuln>0 ? .58 : 1;ctx.drawImage(operator,-sw/2,-sh/2,sw,sh);ctx.globalAlpha=1;}
-      else {ctx.beginPath();ctx.arc(0,0,player.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#18211d';ctx.fillRect(2,-3,player.r+10,6);}
+      ctx.globalAlpha=player.invuln>0 ? .58 : 1;ctx.beginPath();ctx.arc(0,0,player.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#18211d';ctx.fillRect(2,-3,player.r+10,6);ctx.globalAlpha=1;
     }
     ctx.restore();
     ctx.restore();
