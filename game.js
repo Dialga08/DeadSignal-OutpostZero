@@ -6,8 +6,10 @@
   const ctx = canvas.getContext('2d');
   const characterSprites = {bert: new Image()};
   characterSprites.bert.src = 'assets/characters/bert-chester.png?v=3';
-  const slotMachineSprite = new Image();
-  slotMachineSprite.src = 'assets/gun-slot-machine.png?v=2';
+  const weaponSlotSprite = new Image();
+  weaponSlotSprite.src = 'assets/gun-slot-machine.png?v=2';
+  const characterSlotSprite = new Image();
+  characterSlotSprite.src = 'assets/character-slot-machine.png?v=1';
   const slotRarityOrder = ['common','uncommon','rare','epic','legendary'];
   const slotRarityColors = {common:'#90969c',uncommon:'#39a95a',rare:'#3e83d4',epic:'#a450bd',legendary:'#e58a32'};
   const WEAPON_LOOT_ICON = {pistol:'pistol',rifle:'rifle',grenade:'grenadeLauncher',rpg:'rpg',minigun:'minigun'};
@@ -77,11 +79,12 @@
   function drawSlotMachine(canvas, rarity='common') {
     if(!canvas)return;
     canvas.dataset.rarity=rarity;
-    if(!slotMachineSprite.complete||!slotMachineSprite.naturalWidth)return;
+    const sprite=canvas.id==='characterSlotCanvas'?characterSlotSprite:weaponSlotSprite;
+    if(!sprite.complete||!sprite.naturalWidth)return;
     const crop=document.createElement('canvas');crop.width=28;crop.height=31;
     const cropCtx=crop.getContext('2d',{willReadFrequently:true});
     cropCtx.imageSmoothingEnabled=false;
-    cropCtx.drawImage(slotMachineSprite,31,26,28,31,0,0,28,31);
+    cropCtx.drawImage(sprite,31,26,28,31,0,0,28,31);
     const image=cropCtx.getImageData(0,0,28,31),hex=slotRarityColors[rarity]||slotRarityColors.common;
     const color=[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];
     // Tint only the three reel windows; preserve the machine's outlines and red 7s.
@@ -92,10 +95,12 @@
     cropCtx.putImageData(image,0,0);
     const out=canvas.getContext('2d');out.imageSmoothingEnabled=false;out.clearRect(0,0,canvas.width,canvas.height);out.drawImage(crop,0,0,canvas.width,canvas.height);
   }
-  slotMachineSprite.addEventListener('load',()=>{
+  function redrawSlotMachines() {
     drawSlotMachine($('weaponSlotCanvas'),$('weaponSlotCanvas').dataset.rarity||'common');
     drawSlotMachine($('characterSlotCanvas'),$('characterSlotCanvas').dataset.rarity||'common');
-  });
+  }
+  weaponSlotSprite.addEventListener('load',redrawSlotMachines);
+  characterSlotSprite.addEventListener('load',redrawSlotMachines);
   function spinSlotColors(canvas,finalRarity) {
     let step=0;
     drawSlotMachine(canvas,slotRarityOrder[step]);
