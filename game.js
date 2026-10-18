@@ -41,26 +41,35 @@
   ];
   const rarityRank = { Common:1, Uncommon:2, Rare:3, Epic:4, Legendary:5 };
   const rarityClass = (s) => s.toLowerCase();
-  const defaultSave = { tokens:3, unlocked:['rookie'], selected:'rookie', bestWave:0 };
+  const defaultSave = { coins:0, unlocked:['rookie'], selected:'rookie', unlockedWeapons:['operator'], selectedWeapon:'operator', bestWave:0 };
   let save = loadSave();
   let state = 'menu', lastFrame = 0, toastTimer = 0, rescueTimer = 50, levelChoices = null;
   let player, zombies = [], bullets = [], pickups = [], buildings = [], cityBlocks = [], cityBuildings = [], trees = [], parkFeatures = [], survivor = null, effects = [];
   let keys = {}, pointer = {x:0,y:0,down:false}, touch = {}, wave = 1, quota = 10, kills = 0, credits = 0, prepLeft = 20;
-  let autoAim = false, upgradeOpen = false, fireCooldown = 0, bombCount = 1, airstrikeCount = 0, spawnAccumulator = 0, bossTicketThisWave = false;
+  let autoAim = false, upgradeOpen = false, fireCooldown = 0, bombCount = 1, airstrikeCount = 0, spawnAccumulator = 0, eliteDefeatedThisWave = false;
   let worldTime = 0, level = 1, xp = 0, xpNext = 10, camera = {x:0,y:0}, drawBounds = null, waveSpawned = 0, insideBuilding = null;
 
   function loadSave() {
     try {
       const parsed = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
-      return parsed && Array.isArray(parsed.unlocked) ? {...defaultSave, ...parsed} : {...defaultSave};
+      const loaded = parsed && Array.isArray(parsed.unlocked) ? {...defaultSave, ...parsed} : {...defaultSave};
+      if (!Array.isArray(loaded.unlockedWeapons)) loaded.unlockedWeapons = ['operator'];
+      if (!loaded.unlockedWeapons.includes('operator')) loaded.unlockedWeapons.unshift('operator');
+      if (!loaded.unlockedWeapons.includes(loaded.selectedWeapon)) loaded.selectedWeapon = 'operator';
+      if (parsed && parsed.coins === undefined) loaded.coins = Math.max(0, Number(parsed.tokens) || 0) * 5;
+      delete loaded.tokens;
+      loaded.coins = Math.max(0, Number(loaded.coins) || 0);
+      return loaded;
     } catch (_) { return {...defaultSave}; }
   }
   function saveNow() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) {}
-    updateTokens();
+    updateWallet();
   }
   function selectedChar() { return rosterData.find(c => c.id === save.selected) || rosterData[0]; }
-  function updateTokens() { $('tokenCount').textContent = save.tokens; $('tokenCount2').textContent = save.tokens; }
+  function updateWallet() {
+    ['coinCount','coinCountArmory','coinCountBarracks'].forEach(id => { const node=$(id); if(node) node.textContent=save.coins; });
+  }
   function showToast(message, iconName) {
     const el = $('toast');
     el.replaceChildren();
@@ -161,48 +170,94 @@
   const prizeTable = [
     ['rookie',50], ['sidearm',27], ['scout',15], ['demolition',7], ['rocketeer',0.45], ['gunner',0.35], ['heli',0.1], ['tank',0.1]
   ];
-  function spinGacha() {
-    if (save.tokens < 1) { showGacha('No tickets left. Defeat the elite infected every fifth wave to earn one.'); return; }
-    save.tokens--; saveNow();
-    $('spinButton').disabled = true;
-    $('gumballs').classList.add('spinning');
-    $('gachaResult').textContent = 'The machine is rattling...';
+  const weaponPrizes = [['pistol',50],['rifle',27],['grenade',15],['rpg',7.8],['minigun',0.2]];
+  const weaponName = {operator:'Operator\'s default',pistol:'FN-45 Pistol',rifle:'M4 Rifle',grenade:'Grenade Launcher',rpg:'RPG',minigun:'Minigun'};
+  function rollPrize(table) {
     const roll = Math.random() * 100;
-    let sum = 0, selected = prizeTable[0][0];
-    for (const [id, chance] of prizeTable) { sum += chance; if (roll < sum) { selected = id; break; } }
+    let sum = 0, selected = table[0][0];
+    for (const [id, chance] of table) { sum += chance; if (roll < sum) { selected = id; break; } }
+    return selected;
+  }
+  function renderWeaponInventory() {
+    const root=$('weaponInventory');
+    if(!root)return;
+    root.replaceChildren();
+    const ids=['operator','pistol','rifle','grenade','rpg','minigun'];
+    ids.forEach(id=>{
+      const unlocked=save.unlockedWeapons.includes(id);
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='weapon-choice'+(save.selectedWeapon===id?' selected':'')+(!unlocked?' locked':'');
+      button.disabled=!unlocked;
+      button.innerHTML='<b>'+weaponName[id]+'</b><small>'+(unlocked?(save.selectedWeapon===id?'EQUIPPED':'UNLOCKED'):'LOCKED')+'</small>';
+      if(unlocked)button.addEventListener('click',()=>{save.selectedWeapon=id;saveNow();renderWeaponInventory();});
+      root.appendChild(button);
+    });
+    const found=save.unlockedWeapons.filter(id=>id!=='operator').length;
+    $('weaponCollectionCount').textContent=found+' / '+weaponPrizes.length;
+    $('weaponCollectionFill').style.width=(found/weaponPrizes.length*100)+'%';
+    $('weaponLoadoutHint').textContent=save.selectedWeapon==='operator'?"Using each operator's default weapon.":'Next deployment: '+weaponName[save.selectedWeapon]+'.';
+  }
+  function spinWeaponMachine() {
+    if (save.coins < 3) { $('weaponGachaResult').textContent='You need 3 coins. Collect money during a run to afford a spin.'; return; }
+    save.coins-=3; saveNow();
+    const button=$('weaponSpinButton'),machine=$('weaponGumballs');
+    button.disabled=true;machine.classList.add('spinning');
+    $('weaponGachaResult').textContent='The machine is rattling...';
+    const selected=rollPrize(weaponPrizes);
     window.setTimeout(() => {
-      $('gumballs').classList.remove('spinning');
-      const c = rosterData.find(item => item.id === selected);
-      const already = save.unlocked.includes(c.id);
-      if (!already) {
-        save.unlocked.push(c.id);
-        $('gachaResult').innerHTML = '<b class="' + rarityClass(c.rarity) + '">' + c.rarity.toUpperCase() + ' RECRUIT: ' + c.name + '</b><br>' + c.desc;
+      machine.classList.remove('spinning');
+      if (!save.unlockedWeapons.includes(selected)) {
+        save.unlockedWeapons.push(selected);
+        save.selectedWeapon=selected;
+        $('weaponGachaResult').innerHTML='<b class="rare">NEW WEAPON: '+weaponName[selected]+'</b><br>Unlocked and equipped for your next deployment.';
       } else {
-        const refund = c.rarity === 'Legendary' ? 3 : c.rarity === 'Epic' ? 2 : 1;
-        save.tokens += refund;
-        $('gachaResult').innerHTML = '<b>' + c.name + ' duplicate</b><br>Converted into ' + refund + ' spin ticket' + (refund > 1 ? 's' : '') + '.';
+        save.coins+=1;
+        $('weaponGachaResult').innerHTML='<b>'+weaponName[selected]+' duplicate</b><br>Converted into 1 coin.';
       }
-      saveNow(); renderRoster(); $('spinButton').disabled = false;
+      saveNow();renderWeaponInventory();button.disabled=false;
     }, 1000);
   }
-  function showGacha(text) { $('gachaResult').textContent = text; }
+  function spinCharacterMachine() {
+    if(save.coins<5){$('characterGachaResult').textContent='You need 5 coins. Collect money during a run to afford a spin.';return;}
+    save.coins-=5;saveNow();
+    const button=$('characterSpinButton'),machine=$('characterGumballs');
+    button.disabled=true;machine.classList.add('spinning');
+    $('characterGachaResult').textContent='The machine is rattling...';
+    const selected=rollPrize(prizeTable);
+    window.setTimeout(()=>{
+      machine.classList.remove('spinning');
+      const c=rosterData.find(item=>item.id===selected);
+      if(!save.unlocked.includes(c.id)){
+        save.unlocked.push(c.id);
+        $('characterGachaResult').innerHTML='<b class="'+rarityClass(c.rarity)+'">'+c.rarity.toUpperCase()+' RECRUIT: '+c.name+'</b><br>'+c.desc;
+      }else{
+        const refund=c.rarity==='Legendary'?5:c.rarity==='Epic'?4:c.rarity==='Rare'?3:c.rarity==='Uncommon'?2:1;
+        save.coins+=refund;
+        $('characterGachaResult').innerHTML='<b>'+c.name+' duplicate</b><br>Converted into '+refund+' coin'+(refund===1?'':'s')+'.';
+      }
+      saveNow();renderRoster();button.disabled=false;
+    },1000);
+  }
 
   function setMenuView(view) {
-    const main=view==='main', garrison=view==='garrison', armory=view==='armory';
+    const main=view==='main', armory=view==='armory', barracks=view==='barracks';
     document.querySelector('.briefing').hidden=!main;
-    document.querySelector('.gacha-panel').hidden=!garrison;
-    document.querySelector('.roster-panel').hidden=!armory;
-    document.querySelector('.menu-grid').classList.toggle('single-view',main||garrison);
+    document.querySelector('.armory-panel').hidden=!armory;
+    document.querySelector('.barracks-panel').hidden=!barracks;
+    document.querySelector('.roster-panel').hidden=!barracks;
+    document.querySelector('.menu-grid').classList.toggle('single-view',main||armory||barracks);
     document.querySelectorAll('[data-menu-tab]').forEach(button=>button.classList.toggle('active',button.dataset.menuTab===view));
   }
 
   function beginGame() {
     $('menu').hidden = true; $('endScreen').hidden = true; $('gameScreen').hidden = false;
     $('pauseOverlay').hidden = true;
-    state='playing'; wave=1; quota=10; kills=0; credits=0; zombies=[]; bullets=[]; pickups=[]; effects=[]; survivor=null; bossTicketThisWave=false;
+    state='playing'; wave=1; quota=10; kills=0; credits=0; zombies=[]; bullets=[]; pickups=[]; effects=[]; survivor=null; eliteDefeatedThisWave=false;
     worldTime=0; level=1; xp=0; xpNext=10; rescueTimer=45; autoAim=false; upgradeOpen=false; bombCount=1; airstrikeCount=0; insideBuilding=null;
     const c = selectedChar();
-    player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:c.hp,maxHp:c.hp,attack:c.attack,speed:c.speed,armor:0,fireRate:1,baseStats:{hp:c.hp,attack:c.attack,speed:c.speed,fireRate:1},weapon:c.weapon,baseWeapon:c.weapon,color:c.color,sprite:c.sprite||null,invuln:0,ammo:magazineSize(c.weapon),reloadLeft:0,moving:false,walkTime:0};
+    const weapon=save.selectedWeapon==='operator'?c.weapon:save.selectedWeapon;
+    player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:c.hp,maxHp:c.hp,attack:c.attack,speed:c.speed,armor:0,fireRate:1,baseStats:{hp:c.hp,attack:c.attack,speed:c.speed,fireRate:1},weapon,baseWeapon:weapon,color:c.color,sprite:c.sprite||null,invuln:0,ammo:magazineSize(weapon),reloadLeft:0,moving:false,walkTime:0};
     quota=10; waveSpawned=0; spawnAccumulator=0; buildMap(); resizeCanvas(); $('upgradePanel').hidden=true; $('prepBanner').hidden=true;
     $('charNameHud').textContent=c.name.toUpperCase(); $('aimHud').textContent='MANUAL AIM · R'; showToast('Manual fire: aim and hold the mouse button to shoot.');
     lastFrame=performance.now(); requestAnimationFrame(frame);
@@ -444,11 +499,11 @@
 
   function startWave() {
     if(state==='prep'){
-      state='playing';wave++;quota=10+(wave-1)*5;kills=0;waveSpawned=0;prepLeft=20;spawnAccumulator=0;bossTicketThisWave=false;$('prepBanner').hidden=true;$('upgradePanel').hidden=true;showToast('Wave '+wave+': eliminate '+quota+' infected.'+(wave%5===0?' An elite is expected.':''));}
+      state='playing';wave++;quota=10+(wave-1)*5;kills=0;waveSpawned=0;prepLeft=20;spawnAccumulator=0;eliteDefeatedThisWave=false;$('prepBanner').hidden=true;$('upgradePanel').hidden=true;showToast('Wave '+wave+': eliminate '+quota+' infected.'+(wave%5===0?' An elite is expected.':''));}
   }
   function clearWave() {
     state='prep'; prepLeft=20; zombies=[]; bullets=[]; save.bestWave=Math.max(save.bestWave,wave); saveNow();
-    $('prepBanner').hidden=false; $('prepTitle').textContent='Wave '+wave+' complete'; $('prepTimer').textContent='Next wave in 20'; showToast(bossTicketThisWave?'Elite defeated! Collect its dropped Gumball ticket.':'Wave cleared! Spend zombie cash on upgrades.');
+    $('prepBanner').hidden=false; $('prepTitle').textContent='Wave '+wave+' complete'; $('prepTimer').textContent='Next wave in 20'; showToast(eliteDefeatedThisWave?'Elite defeated! Collect its bonus money.':'Wave cleared! Spend zombie cash on upgrades.');
   }
 
   function toggleUpgrades() {
@@ -546,7 +601,7 @@
       z.dead=true;kills++;
       pickups.push({x:z.x-5,y:z.y,r:7,value:5+Math.min(wave,10),kind:'money'});
       const amount=1+Math.floor(Math.random()*2);pickups.push({x:z.x+6,y:z.y,r:5,value:amount,kind:'xp'});
-      if(z.boss){pickups.push({x:z.x,y:z.y-12,r:8,value:1,kind:'ticket'});bossTicketThisWave=true;}
+      if(z.boss){pickups.push({x:z.x,y:z.y-12,r:9,value:40+Math.min(wave,20),kind:'money'});eliteDefeatedThisWave=true;}
       if(kills>=quota&&state==='playing')clearWave();
     }
   }
@@ -623,7 +678,7 @@
       if(kills>=quota&&state==='playing')clearWave();
     }
     if(state==='playing'||state==='prep'){
-      pickups.forEach(p=>{const d=Math.hypot(player.x-p.x,player.y-p.y);if(d<player.r+20){if(p.kind==='money')credits+=p.value;else if(p.kind==='ticket'){save.tokens+=p.value;bossTicketThisWave=false;saveNow();showToast('Gumball ticket collected!');}else{xp+=p.value;if(xp>=xpNext)levelUp();}p.collected=true;}});
+      pickups.forEach(p=>{const d=Math.hypot(player.x-p.x,player.y-p.y);if(d<player.r+20){if(p.kind==='money')credits+=p.value;else{xp+=p.value;if(xp>=xpNext)levelUp();}p.collected=true;}});
       pickups=pickups.filter(p=>!p.collected);
     }
     effects.forEach(e=>e.life-=dt);effects=effects.filter(e=>e.life>0);
@@ -655,9 +710,15 @@
     $('gameScreen').appendChild(box);
   }
 
+  function bankRunMoney() {
+    const banked=Math.max(0,Math.floor(credits));
+    if(banked){save.coins+=banked;credits=0;saveNow();}
+    return banked;
+  }
   function endGame() {
-    if(state==='gameover')return;state='gameover';$('pauseOverlay').hidden=true;save.bestWave=Math.max(save.bestWave,wave);saveNow();
-    $('endTitle').textContent='SIGNAL LOST';$('endSummary').textContent='You reached wave '+wave+', cleared '+kills+' infected, and collected $'+credits+'. Best wave: '+save.bestWave+'.';
+    if(state==='gameover')return;state='gameover';$('pauseOverlay').hidden=true;save.bestWave=Math.max(save.bestWave,wave);
+    const banked=bankRunMoney();saveNow();
+    $('endTitle').textContent='SIGNAL LOST';$('endSummary').textContent='You reached wave '+wave+', cleared '+kills+' infected, and banked '+banked+' coins. Best wave: '+save.bestWave+'.';
     $('gameScreen').hidden=true;$('endScreen').hidden=false;
   }
 
@@ -939,10 +1000,11 @@
     state=resumeState;lastFrame=performance.now();$('pauseOverlay').hidden=true;
   }
   function leaveGame() {
+    bankRunMoney();
     state='menu';keys={};touch={};pointer.down=false;upgradeOpen=false;
     $('pauseOverlay').hidden=true;$('upgradePanel').hidden=true;$('prepBanner').hidden=true;
     $('gameScreen').hidden=true;$('endScreen').hidden=true;$('menu').hidden=false;
-    renderRoster();setMenuView('main');
+    renderRoster();renderWeaponInventory();setMenuView('main');
   }
 
   function frame(now) {
@@ -972,11 +1034,12 @@
   window.addEventListener('pointerup',()=>{pointer.down=false;});
   document.querySelectorAll('[data-menu-tab]').forEach(button=>button.addEventListener('click',()=>setMenuView(button.dataset.menuTab)));
   $('startButton').addEventListener('click',beginGame);
-  $('spinButton').addEventListener('click',spinGacha);
+  $('weaponSpinButton').addEventListener('click',spinWeaponMachine);
+  $('characterSpinButton').addEventListener('click',spinCharacterMachine);
   $('upgradeButton').addEventListener('click',toggleUpgrades);
   $('closeUpgrade').addEventListener('click',()=>{upgradeOpen=false;$('upgradePanel').hidden=true;});
   $('nextWaveButton').addEventListener('click',startWave);
-  $('returnMenu').addEventListener('click',()=>{$('endScreen').hidden=true;$('menu').hidden=false;state='menu';renderRoster();setMenuView('main');});
+  $('returnMenu').addEventListener('click',()=>{$('endScreen').hidden=true;$('menu').hidden=false;state='menu';renderRoster();renderWeaponInventory();setMenuView('main');});
   $('pauseButton').addEventListener('click',pauseGame);
   $('continueButton').addEventListener('click',continueGame);
   $('leaveButton').addEventListener('click',leaveGame);
@@ -991,5 +1054,5 @@
     b.addEventListener('pointerup',()=>set(false));b.addEventListener('pointercancel',()=>set(false));b.addEventListener('lostpointercapture',()=>set(false));
   });
   window.addEventListener('blur',()=>{keys={};touch={};pointer.down=false;});
-  updateTokens();renderRoster();setMenuView("main");
+  updateWallet();renderRoster();renderWeaponInventory();setMenuView("main");
 })();

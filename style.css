@@ -119,6 +119,12 @@ body{font-family:ui-monospace,"Courier New",monospace}
 .collection-track{grid-column:1/-1;height:7px;background:#111a16;border-radius:8px;overflow:hidden}.collection-track i{display:block;width:12.5%;height:100%;background:linear-gradient(90deg,#85a451,#c4e36b);transition:width .3s}
 .collection-card small{grid-column:1/-1;color:#9eab9d;font-size:9px}
 .garrison-note{margin:auto 0 0;color:#aab6a8;font-size:10px;line-height:1.5}
+.weapon-inventory{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.weapon-choice{display:flex;flex-direction:column;gap:3px;align-items:flex-start;padding:8px;background:#1a251f;border:1px solid #415247;border-radius:5px;color:#e4eadf;text-align:left;cursor:pointer}
+.weapon-choice b{font-size:9px}.weapon-choice small{font-size:7px;letter-spacing:.12em;color:#a9b79c}
+.weapon-choice.selected{border-color:var(--lime);background:#2b3928;box-shadow:0 0 0 1px #c4e36b44}
+.weapon-choice.locked{opacity:.38;cursor:not-allowed}
+.spin-button:disabled{opacity:.58;cursor:wait}
 @media(max-width:650px){.garrison-layout{grid-template-columns:1fr}.machine-dome{height:205px}.garrison-intel{padding:14px}.odds{grid-template-columns:1fr 1fr;gap:12px}.odds-row:last-child{grid-column:1/-1}}
 .operator-card{min-height:112px;gap:12px;padding:12px}
 .operator-avatar{flex:0 0 58px;width:58px;height:68px;overflow:hidden;border-radius:7px}
