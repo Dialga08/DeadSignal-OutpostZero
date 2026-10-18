@@ -4,6 +4,8 @@
   const $ = (id) => document.getElementById(id);
   const canvas = $('game');
   const ctx = canvas.getContext('2d');
+  const characterSprites = {bert: new Image()};
+  characterSprites.bert.src = 'assets/characters/bert-chester.png';
   const WEAPON_LOOT_ICON = {pistol:'pistol',rifle:'rifle',grenade:'grenadeLauncher',rpg:'rpg',minigun:'minigun'};
   const WEAPON_LOOT_LABEL = {pistol:'FN-45 pistol',rifle:'M4 rifle',grenade:'grenade launcher',rpg:'RPG',minigun:'minigun'};
   const LOOT_ICON_GLYPHS = {money:'$',armor:'ARM',grenade:'G',radio:'RAD',bandage:'MED',medicKit:'MED',pistol:'PST',rifle:'RIF',grenadeLauncher:'GL',rpg:'RPG',minigun:'MG'};
@@ -28,7 +30,7 @@
   const CAMERA_ZOOM = 1.32;
   const SAVE_KEY = 'deadSignalSaveV1';
   const rosterData = [
-    { id:'rookie', name:'Rookie', rarity:'Common', weapon:'knife', hp:85, attack:1.01, speed:98, color:'#c8d5cb', size:14, desc:'A steady recruit. Starts with a combat knife.' },
+    { id:'rookie', name:'Bert Chester', sprite:'bert', rarity:'Common', weapon:'knife', hp:85, attack:1.01, speed:98, color:'#c8d5cb', size:14, desc:'A steady recruit. Starts with a combat knife.' },
     { id:'sidearm', name:'Sidearm', rarity:'Uncommon', weapon:'pistol', hp:95, attack:1.05, speed:100, color:'#9db8c4', size:14, desc:'Quick shots and dependable handling.' },
     { id:'scout', name:'Scout', rarity:'Rare', weapon:'rifle', hp:105, attack:1.15, speed:112, color:'#9ab77e', size:15, desc:'Fast operator with an assault rifle.' },
     { id:'demolition', name:'Demolition', rarity:'Epic', weapon:'grenade', hp:125, attack:1.35, speed:94, color:'#d19b5a', size:16, desc:'Lobs explosive rounds into groups.' },
@@ -75,6 +77,29 @@
     const w=size,h=size*.62,x=cx-w/2,y=cy-h/2;
     ctx.fillStyle='#22392b';ctx.fillRect(x,y,w,h);ctx.strokeStyle='#b8d77b';ctx.lineWidth=Math.max(1,size/12);ctx.strokeRect(x+1,y+1,w-2,h-2);
     ctx.fillStyle='#b8d77b';ctx.font='bold '+Math.max(10,size*.55)+'px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$',cx,cy);ctx.textBaseline='alphabetic';
+  }
+  function drawHuman(x,y,angle,frame,radius,color,invulnerable,weapon) {
+    const a=((angle%(Math.PI*2))+(Math.PI*2))%(Math.PI*2);
+    // Bert's sheet uses four directions (down, left, right, up), with four frames per row.
+    const row=a<Math.PI/4||a>=Math.PI*7/4?2:a<Math.PI*3/4?0:a<Math.PI*5/4?1:a<Math.PI*7/4?3:2;
+    const sprite=characterSprites.bert;
+    if(sprite.complete&&sprite.naturalWidth>=128&&sprite.naturalHeight>=128) {
+      const size=radius*3.25;
+      ctx.globalAlpha=invulnerable?.58:1;
+      ctx.drawImage(sprite,(frame%4)*32,row*32,32,32,x-size/2,y-size/2,size,size);
+      ctx.globalAlpha=1;
+    } else {
+      ctx.fillStyle=invulnerable?'#f6a29a':color;ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();
+    }
+    if(weapon&&weapon!=='knife') {
+      const length=weapon==='rpg'?radius*2.05:weapon==='minigun'?radius*1.8:radius*1.55;
+      ctx.save();ctx.translate(x,y);ctx.rotate(angle);
+      ctx.fillStyle='#202923';ctx.fillRect(2,-radius*.28,length,radius*.38);
+      ctx.fillStyle='#596157';ctx.fillRect(5,-radius*.2,length*.68,radius*.18);
+      ctx.fillStyle='#151b18';ctx.fillRect(length+1,-radius*.2,Math.max(3,radius*.35),radius*.2);
+      ctx.fillStyle='#343c35';ctx.fillRect(radius*.38,radius*.08,radius*.32,radius*.52);
+      ctx.restore();
+    }
   }
 
   function renderRoster() {
@@ -134,7 +159,7 @@
     state='playing'; wave=1; quota=10; kills=0; credits=0; zombies=[]; bullets=[]; pickups=[]; effects=[]; survivor=null; bossTicketThisWave=false;
     worldTime=0; level=1; xp=0; xpNext=10; rescueTimer=45; autoAim=false; upgradeOpen=false; bombCount=1; airstrikeCount=0; insideBuilding=null;
     const c = selectedChar();
-    player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:c.hp,maxHp:c.hp,attack:c.attack,speed:c.speed,armor:0,fireRate:1,baseStats:{hp:c.hp,attack:c.attack,speed:c.speed,fireRate:1},weapon:c.weapon,baseWeapon:c.weapon,color:c.color,invuln:0,ammo:magazineSize(c.weapon),reloadLeft:0};
+    player = {x:WORLD.w/2,y:WORLD.h/2,r:c.size,hp:c.hp,maxHp:c.hp,attack:c.attack,speed:c.speed,armor:0,fireRate:1,baseStats:{hp:c.hp,attack:c.attack,speed:c.speed,fireRate:1},weapon:c.weapon,baseWeapon:c.weapon,color:c.color,sprite:c.sprite||null,invuln:0,ammo:magazineSize(c.weapon),reloadLeft:0};
     quota=10; waveSpawned=0; spawnAccumulator=0; buildMap(); resizeCanvas(); $('upgradePanel').hidden=true; $('prepBanner').hidden=true;
     $('charNameHud').textContent=c.name.toUpperCase(); $('aimHud').textContent='MANUAL AIM · R'; showToast('Manual fire: aim and hold the mouse button to shoot.');
     lastFrame=performance.now(); requestAnimationFrame(frame);
@@ -812,14 +837,15 @@
     });
     effects.forEach(e=>{const a=Math.max(0,e.life/e.max);if(e.type==='blast'){ctx.globalAlpha=a*.55;ctx.fillStyle='#f4a555';ctx.beginPath();ctx.arc(e.x,e.y,e.r*(1-a*.45),0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}else{ctx.strokeStyle='#f3e7bd';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(e.x-e.dy*22,e.y+e.dx*22);ctx.lineTo(e.x+e.dy*22,e.y-e.dx*22);ctx.stroke();}});
     const target=aimTarget(),angle=Math.atan2(target.y-player.y,target.x-player.x);
-    ctx.save();ctx.translate(player.x,player.y);ctx.rotate(angle);
-    ctx.fillStyle=player.invuln>0?'#f6a29a':player.color;
-    if(player.weapon==='heli'){ctx.fillRect(-player.r,-player.r/2,player.r*2,player.r);ctx.strokeStyle='#c1d2bd';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-player.r*1.5,-player.r*1.4);ctx.lineTo(player.r*1.5,-player.r*1.4);ctx.stroke();}
-    else if(player.weapon==='tank'){ctx.fillRect(-player.r,-player.r*.72,player.r*2,player.r*1.44);ctx.fillStyle='#c4b789';ctx.fillRect(0,-4,player.r*1.7,8);}
-    else {
-      ctx.globalAlpha=player.invuln>0 ? .58 : 1;ctx.beginPath();ctx.arc(0,0,player.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#18211d';ctx.fillRect(2,-3,player.r+10,6);ctx.globalAlpha=1;
+    if(player.weapon==='heli'||player.weapon==='tank') {
+      ctx.save();ctx.translate(player.x,player.y);ctx.rotate(angle);ctx.fillStyle=player.invuln>0?'#f6a29a':player.color;
+      if(player.weapon==='heli'){ctx.fillRect(-player.r,-player.r/2,player.r*2,player.r);ctx.strokeStyle='#c1d2bd';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-player.r*1.5,-player.r*1.4);ctx.lineTo(player.r*1.5,-player.r*1.4);ctx.stroke();}
+      else {ctx.fillRect(-player.r,-player.r*.72,player.r*2,player.r*1.44);ctx.fillStyle='#c4b789';ctx.fillRect(0,-4,player.r*1.7,8);}
+      ctx.restore();
+    } else {
+      const moving=keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD||keys.ArrowUp||keys.ArrowDown||keys.ArrowLeft||keys.ArrowRight||touch.up||touch.down||touch.left||touch.right;
+      drawHuman(player.x,player.y,angle,moving?Math.floor(worldTime*8)%4:0,player.r,player.color,player.invuln>0,player.weapon);
     }
-    ctx.restore();
     ctx.restore();
     if(state==='playing'&&pointer.x>0){ctx.strokeStyle='rgba(235,229,196,.65)';ctx.beginPath();ctx.arc(pointer.x,pointer.y,7,0,Math.PI*2);ctx.moveTo(pointer.x-11,pointer.y);ctx.lineTo(pointer.x+11,pointer.y);ctx.moveTo(pointer.x,pointer.y-11);ctx.lineTo(pointer.x,pointer.y+11);ctx.stroke();}
   }
@@ -848,8 +874,7 @@
     for(let i=0;i<4;i++){ctx.fillStyle=i%2?'#657065':'#92845f';ctx.fillRect(100+i*24,109,15,16);}
     const px=insideBuilding.playerX,py=insideBuilding.playerY;
     ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(px+2,py+5,14,7,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle=player.color;ctx.beginPath();ctx.arc(px,py,player.r,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#202923';ctx.fillRect(px+4,py-3,player.r+8,6);
+    drawHuman(px,py,0,0,player.r,player.color,player.invuln>0,player.weapon);
     ctx.restore();
     ctx.fillStyle='#e6e0ca';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('WASD · MOVE     E · LOOT BIN / EXIT',w/2,h-20);
   }

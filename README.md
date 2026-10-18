@@ -1,6 +1,6 @@
 # Dead Signal: Outpost Zero
 
-A small, original browser-based military zombie survival prototype. It uses plain HTML, CSS, and JavaScript with no external libraries or bundled texture packs. Characters, buildings, roads, trees, and loot icons are drawn by the game.
+A small, original browser-based military zombie survival prototype. It uses plain HTML, CSS, and JavaScript with no external libraries or bundled texture packs. Characters, buildings, roads, trees, and loot icons are drawn by the game, with Bert Chester's supplied sprite sheet used for the starting character.
 
 ## Play locally
 Open \`index.html\` in a web browser. Your unlocks and tokens are saved in that browser's local storage.
