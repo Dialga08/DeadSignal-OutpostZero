@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="64" viewBox="0 0 32 64" shape-rendering="crispEdges">
+  <!-- Transparent pixel-art combat knife, oriented blade-up for aim rotation in game. -->
+  <path fill="#20231f" d="M14 2h7v2h3v4h-2v29h-3v5h-2v3h-2v-3h-2v-5h-3V12h2V6h2z"/>
+  <path fill="#777b7a" d="M15 5h5v31h-2v4h-2v-4h-1z"/>
+  <path fill="#aeb2ad" d="M15 7h2v27h-2z"/>
+  <path fill="#555a59" d="M12 10h3v24h-3z"/>
+  <path fill="#252a29" d="M4 39h24v4H4z"/>
+  <path fill="#131817" d="M8 43h16v2h-2v15H10V45H8z"/>
+  <path fill="#454b4b" d="M11 45h10v13H11z"/>
+  <path fill="#5b6060" d="M11 47h3v9h-3z"/>
+  <path fill="#191e1d" d="M10 58h12v3H10z"/>
+</svg>

@@ -6,6 +6,8 @@
   const ctx = canvas.getContext('2d');
   const characterSprites = {bert: new Image()};
   characterSprites.bert.src = 'assets/characters/bert-chester.png?v=3';
+  const weaponSprites = {knife:new Image()};
+  weaponSprites.knife.src = 'assets/weapons/combat-knife.svg?v=1';
   const weaponSlotSprite = new Image();
   weaponSlotSprite.src = 'assets/gun-slot-machine.png?v=2';
   const characterSlotSprite = new Image();
@@ -169,7 +171,16 @@
     } else {
       ctx.fillStyle=invulnerable?'#f6a29a':color;ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();
     }
-    if(weapon&&weapon!=='knife') {
+    if(weapon==='knife'&&weaponSprites.knife.complete&&weaponSprites.knife.naturalWidth) {
+      // The supplied knife artwork points upward; rotate it to follow the aim direction.
+      ctx.save();
+      ctx.translate(x+Math.cos(angle)*radius*.58,y+Math.sin(angle)*radius*.58);
+      ctx.rotate(angle+Math.PI/2);
+      ctx.imageSmoothingEnabled=false;
+      const knifeWidth=Math.max(8,radius*.72),knifeHeight=Math.max(20,radius*1.8);
+      ctx.drawImage(weaponSprites.knife,-knifeWidth/2,-knifeHeight/2,knifeWidth,knifeHeight);
+      ctx.restore();
+    } else if(weapon&&weapon!=='knife') {
       const length=weapon==='rpg'?radius*2.05:weapon==='minigun'?radius*1.8:radius*1.55;
       ctx.save();ctx.translate(x,y);ctx.rotate(angle);
       ctx.fillStyle='#202923';ctx.fillRect(2,-radius*.28,length,radius*.38);
