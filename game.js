@@ -6,9 +6,10 @@
   const ctx = canvas.getContext('2d');
   const characterSprites = {bert: new Image()};
   characterSprites.bert.src = 'assets/characters/bert-chester.png?v=3';
-  const weaponSprites = {knife:new Image(),pistol:new Image()};
+  const weaponSprites = {knife:new Image(),pistol:new Image(),rifle:new Image()};
   weaponSprites.knife.src = 'assets/weapons/combat-knife.svg?v=1';
   weaponSprites.pistol.src = 'assets/weapons/m17-pistol.png?v=1';
+  weaponSprites.rifle.src = 'assets/weapons/m4-rifle.png?v=1';
   const weaponSlotSprite = new Image();
   weaponSlotSprite.src = 'assets/gun-slot-machine.png?v=2';
   const characterSlotSprite = new Image();
@@ -189,6 +190,14 @@
       const pistolSize=radius*2.6;
       ctx.drawImage(weaponSprites.pistol,-pistolSize/2,-pistolSize/2,pistolSize,pistolSize);
       ctx.restore();
+    } else if(weapon==='rifle'&&weaponSprites.rifle.complete&&weaponSprites.rifle.naturalWidth) {
+      ctx.save();
+      ctx.translate(x+Math.cos(angle)*radius*.52,y+Math.sin(angle)*radius*.52);
+      ctx.rotate(angle);
+      ctx.imageSmoothingEnabled=false;
+      const rifleWidth=radius*4.2,rifleHeight=rifleWidth*weaponSprites.rifle.naturalHeight/weaponSprites.rifle.naturalWidth;
+      ctx.drawImage(weaponSprites.rifle,-rifleWidth/2,-rifleHeight/2,rifleWidth,rifleHeight);
+      ctx.restore();
     } else if(weapon&&weapon!=='knife') {
       const length=weapon==='rpg'?radius*2.05:weapon==='minigun'?radius*1.8:radius*1.55;
       ctx.save();ctx.translate(x,y);ctx.rotate(angle);
@@ -259,7 +268,7 @@
   const prizeTable = [['rookie',100]];
   const weaponPrizes = [['pistol',50],['rifle',27],['grenade',15],['rpg',7.8],['minigun',0.2]];
   const weaponName = {operator:'Operator\'s default',pistol:'M17',rifle:'M4 Rifle',grenade:'Grenade Launcher',rpg:'RPG',minigun:'Minigun'};
-  function weaponLabel(weapon) { return weapon==='pistol'?'M17':weapon.toUpperCase(); }
+  function weaponLabel(weapon) { return weapon==='pistol'?'M17':weapon==='rifle'?'M4':weapon.toUpperCase(); }
   const weaponRarity = {pistol:'common',rifle:'uncommon',grenade:'rare',rpg:'epic',minigun:'legendary'};
   function rollPrize(table) {
     const roll = Math.random() * 100;
