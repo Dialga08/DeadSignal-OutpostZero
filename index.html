@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111a18">
   <title>Dead Signal: Outpost Zero</title>
-  <link rel="stylesheet" href="style.css?v=armory-barracks-coins-v2-20261018">
+  <link rel="stylesheet" href="style.css?v=slot-machine-art-v1-20261018">
 </head>
 <body>
   <main class="app">
@@ -56,15 +56,7 @@
           <div class="garrison-layout">
             <div class="machine">
               <div class="machine-cap"><span>OUTPOST ISSUE</span><b>WEAPON DISPENSER</b></div>
-              <div class="machine-dome">
-                <div id="weaponGumballs" class="gumballs" aria-label="Weapon gumball machine">
-                  <span class="gum gum-a"></span><span class="gum gum-b"></span><span class="gum gum-c"></span>
-                  <span class="gum gum-d"></span><span class="gum gum-e"></span><span class="gum gum-f"></span>
-                  <span class="gum gum-g"></span><span class="gum gum-h"></span>
-                </div>
-              </div>
-              <div class="machine-throat"></div>
-              <div class="machine-base"><span class="machine-window">WEAPON DRAW</span><span class="machine-crank" aria-hidden="true">✦</span></div>
+              <div class="slot-cabinet"><canvas id="weaponSlotCanvas" class="slot-art" width="168" height="186" aria-hidden="true"></canvas></div>
               <button id="weaponSpinButton" class="spin-button">SPIN FOR A GUN <span>· 3 COINS</span></button>
               <div id="weaponGachaResult" class="gacha-result" aria-live="polite">Weapon machine ready.</div>
             </div>
@@ -91,15 +83,7 @@
           <div class="garrison-layout">
             <div class="machine">
               <div class="machine-cap"><span>OUTPOST ISSUE</span><b>RECRUITMENT UNIT 07</b></div>
-              <div class="machine-dome">
-                <div id="characterGumballs" class="gumballs" aria-label="Character gumball machine">
-                  <span class="gum gum-a"></span><span class="gum gum-b"></span><span class="gum gum-c"></span>
-                  <span class="gum gum-d"></span><span class="gum gum-e"></span><span class="gum gum-f"></span>
-                  <span class="gum gum-g"></span><span class="gum gum-h"></span>
-                </div>
-              </div>
-              <div class="machine-throat"></div>
-              <div class="machine-base"><span class="machine-window">NEW OPERATOR</span><span class="machine-crank" aria-hidden="true">✦</span></div>
+              <div class="slot-cabinet"><canvas id="characterSlotCanvas" class="slot-art" width="168" height="186" aria-hidden="true"></canvas></div>
               <button id="characterSpinButton" class="spin-button">SPIN FOR A CHARACTER <span>· 5 COINS</span></button>
               <div id="characterGachaResult" class="gacha-result" aria-live="polite">Your first recruit is ready.</div>
             </div>
@@ -168,7 +152,7 @@
       <div class="panel end-card"><p class="eyebrow">MISSION REPORT</p><h2 id="endTitle">SIGNAL LOST</h2><p id="endSummary"></p><button id="returnMenu" class="primary-button">RETURN TO MENU</button></div>
     </section>
   </main>
-  <script src="game.js?v=armory-barracks-coins-v2-20261018"></script>
+  <script src="game.js?v=slot-machine-art-v1-20261018"></script>
 </body>
 </html>
 

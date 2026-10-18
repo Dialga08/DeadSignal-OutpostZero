@@ -6,6 +6,10 @@
   const ctx = canvas.getContext('2d');
   const characterSprites = {bert: new Image()};
   characterSprites.bert.src = 'assets/characters/bert-chester.png?v=3';
+  const slotMachineSprite = new Image();
+  slotMachineSprite.src = 'assets/gun-slot-machine.png?v=2';
+  const slotRarityOrder = ['common','uncommon','rare','epic','legendary'];
+  const slotRarityColors = {common:'#90969c',uncommon:'#39a95a',rare:'#3e83d4',epic:'#a450bd',legendary:'#e58a32'};
   const WEAPON_LOOT_ICON = {pistol:'pistol',rifle:'rifle',grenade:'grenadeLauncher',rpg:'rpg',minigun:'minigun'};
   const WEAPON_LOOT_LABEL = {pistol:'FN-45 pistol',rifle:'M4 rifle',grenade:'grenade launcher',rpg:'RPG',minigun:'minigun'};
   const LOOT_ICON_GLYPHS = {money:'$',armor:'ARM',grenade:'G',radio:'RAD',bandage:'MED',medicKit:'MED',pistol:'PST',rifle:'RIF',grenadeLauncher:'GL',rpg:'RPG',minigun:'MG'};
@@ -69,6 +73,34 @@
   function selectedChar() { return rosterData.find(c => c.id === save.selected) || rosterData[0]; }
   function updateWallet() {
     ['coinCount','coinCountArmory','coinCountBarracks'].forEach(id => { const node=$(id); if(node) node.textContent=save.coins; });
+  }
+  function drawSlotMachine(canvas, rarity='common') {
+    if(!canvas)return;
+    canvas.dataset.rarity=rarity;
+    if(!slotMachineSprite.complete||!slotMachineSprite.naturalWidth)return;
+    const crop=document.createElement('canvas');crop.width=28;crop.height=31;
+    const cropCtx=crop.getContext('2d',{willReadFrequently:true});
+    cropCtx.imageSmoothingEnabled=false;
+    cropCtx.drawImage(slotMachineSprite,31,26,28,31,0,0,28,31);
+    const image=cropCtx.getImageData(0,0,28,31),hex=slotRarityColors[rarity]||slotRarityColors.common;
+    const color=[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];
+    // Tint only the three reel windows; preserve the machine's outlines and red 7s.
+    for(let y=7;y<=13;y++)for(let x=5;x<=22;x++){
+      const i=(y*28+x)*4,d=image.data;
+      if(d[i]>210&&d[i+1]>210&&d[i+2]>210){d[i]=color[0];d[i+1]=color[1];d[i+2]=color[2];}
+    }
+    cropCtx.putImageData(image,0,0);
+    const out=canvas.getContext('2d');out.imageSmoothingEnabled=false;out.clearRect(0,0,canvas.width,canvas.height);out.drawImage(crop,0,0,canvas.width,canvas.height);
+  }
+  slotMachineSprite.addEventListener('load',()=>{
+    drawSlotMachine($('weaponSlotCanvas'),$('weaponSlotCanvas').dataset.rarity||'common');
+    drawSlotMachine($('characterSlotCanvas'),$('characterSlotCanvas').dataset.rarity||'common');
+  });
+  function spinSlotColors(canvas,finalRarity) {
+    let step=0;
+    drawSlotMachine(canvas,slotRarityOrder[step]);
+    const interval=window.setInterval(()=>{step=(step+1)%slotRarityOrder.length;drawSlotMachine(canvas,slotRarityOrder[step]);},125);
+    window.setTimeout(()=>{window.clearInterval(interval);drawSlotMachine(canvas,finalRarity);},1000);
   }
   function showToast(message, iconName) {
     const el = $('toast');
@@ -172,6 +204,7 @@
   ];
   const weaponPrizes = [['pistol',50],['rifle',27],['grenade',15],['rpg',7.8],['minigun',0.2]];
   const weaponName = {operator:'Operator\'s default',pistol:'FN-45 Pistol',rifle:'M4 Rifle',grenade:'Grenade Launcher',rpg:'RPG',minigun:'Minigun'};
+  const weaponRarity = {pistol:'common',rifle:'uncommon',grenade:'rare',rpg:'epic',minigun:'legendary'};
   function rollPrize(table) {
     const roll = Math.random() * 100;
     let sum = 0, selected = table[0][0];
@@ -201,12 +234,12 @@
   function spinWeaponMachine() {
     if (save.coins < 3) { $('weaponGachaResult').textContent='You need 3 coins. Collect money during a run to afford a spin.'; return; }
     save.coins-=3; saveNow();
-    const button=$('weaponSpinButton'),machine=$('weaponGumballs');
-    button.disabled=true;machine.classList.add('spinning');
+    const button=$('weaponSpinButton'),machine=$('weaponSlotCanvas');
+    button.disabled=true;
     $('weaponGachaResult').textContent='The machine is rattling...';
     const selected=rollPrize(weaponPrizes);
+    spinSlotColors(machine,weaponRarity[selected]);
     window.setTimeout(() => {
-      machine.classList.remove('spinning');
       if (!save.unlockedWeapons.includes(selected)) {
         save.unlockedWeapons.push(selected);
         save.selectedWeapon=selected;
@@ -221,13 +254,13 @@
   function spinCharacterMachine() {
     if(save.coins<5){$('characterGachaResult').textContent='You need 5 coins. Collect money during a run to afford a spin.';return;}
     save.coins-=5;saveNow();
-    const button=$('characterSpinButton'),machine=$('characterGumballs');
-    button.disabled=true;machine.classList.add('spinning');
+    const button=$('characterSpinButton'),machine=$('characterSlotCanvas');
+    button.disabled=true;
     $('characterGachaResult').textContent='The machine is rattling...';
     const selected=rollPrize(prizeTable);
+    const c=rosterData.find(item=>item.id===selected);
+    spinSlotColors(machine,rarityClass(c.rarity));
     window.setTimeout(()=>{
-      machine.classList.remove('spinning');
-      const c=rosterData.find(item=>item.id===selected);
       if(!save.unlocked.includes(c.id)){
         save.unlocked.push(c.id);
         $('characterGachaResult').innerHTML='<b class="'+rarityClass(c.rarity)+'">'+c.rarity.toUpperCase()+' RECRUIT: '+c.name+'</b><br>'+c.desc;
@@ -1054,5 +1087,5 @@
     b.addEventListener('pointerup',()=>set(false));b.addEventListener('pointercancel',()=>set(false));b.addEventListener('lostpointercapture',()=>set(false));
   });
   window.addEventListener('blur',()=>{keys={};touch={};pointer.down=false;});
-  updateWallet();renderRoster();renderWeaponInventory();setMenuView("main");
+  updateWallet();renderRoster();renderWeaponInventory();drawSlotMachine($('weaponSlotCanvas'),'common');drawSlotMachine($('characterSlotCanvas'),'common');setMenuView("main");
 })();

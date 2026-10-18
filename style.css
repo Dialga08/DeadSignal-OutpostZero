@@ -125,6 +125,13 @@ body{font-family:ui-monospace,"Courier New",monospace}
 .weapon-choice.selected{border-color:var(--lime);background:#2b3928;box-shadow:0 0 0 1px #c4e36b44}
 .weapon-choice.locked{opacity:.38;cursor:not-allowed}
 .spin-button:disabled{opacity:.58;cursor:wait}
+.slot-cabinet{width:100%;min-height:286px;display:flex;align-items:center;justify-content:center;overflow:visible;background:radial-gradient(ellipse at 50% 78%,#64745a55,transparent 62%);}
+.slot-art{display:block;width:224px;height:248px;max-width:100%;image-rendering:pixelated;filter:drop-shadow(0 7px 0 #101713) drop-shadow(0 0 8px #9eac7030);}
+.slot-art[data-rarity="common"]{filter:drop-shadow(0 7px 0 #101713) drop-shadow(0 0 9px #90969c88)}
+.slot-art[data-rarity="uncommon"]{filter:drop-shadow(0 7px 0 #101713) drop-shadow(0 0 11px #39a95aaa)}
+.slot-art[data-rarity="rare"]{filter:drop-shadow(0 7px 0 #101713) drop-shadow(0 0 11px #3e83d4aa)}
+.slot-art[data-rarity="epic"]{filter:drop-shadow(0 7px 0 #101713) drop-shadow(0 0 11px #a450bdaa)}
+.slot-art[data-rarity="legendary"]{filter:drop-shadow(0 7px 0 #101713) drop-shadow(0 0 13px #e58a32bb)}
 @media(max-width:650px){.garrison-layout{grid-template-columns:1fr}.machine-dome{height:205px}.garrison-intel{padding:14px}.odds{grid-template-columns:1fr 1fr;gap:12px}.odds-row:last-child{grid-column:1/-1}}
 .operator-card{min-height:112px;gap:12px;padding:12px}
 .operator-avatar{flex:0 0 58px;width:58px;height:68px;overflow:hidden;border-radius:7px}
