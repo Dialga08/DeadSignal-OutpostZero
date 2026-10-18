@@ -6,8 +6,9 @@
   const ctx = canvas.getContext('2d');
   const characterSprites = {bert: new Image()};
   characterSprites.bert.src = 'assets/characters/bert-chester.png?v=3';
-  const weaponSprites = {knife:new Image()};
+  const weaponSprites = {knife:new Image(),pistol:new Image()};
   weaponSprites.knife.src = 'assets/weapons/combat-knife.svg?v=1';
+  weaponSprites.pistol.src = 'assets/weapons/m17-pistol.png?v=1';
   const weaponSlotSprite = new Image();
   weaponSlotSprite.src = 'assets/gun-slot-machine.png?v=2';
   const characterSlotSprite = new Image();
@@ -15,7 +16,7 @@
   const slotRarityOrder = ['common','uncommon','rare','epic','legendary'];
   const slotRarityColors = {common:'#90969c',uncommon:'#39a95a',rare:'#3e83d4',epic:'#a450bd',legendary:'#e58a32'};
   const WEAPON_LOOT_ICON = {pistol:'pistol',rifle:'rifle',grenade:'grenadeLauncher',rpg:'rpg',minigun:'minigun'};
-  const WEAPON_LOOT_LABEL = {pistol:'FN-45 pistol',rifle:'M4 rifle',grenade:'grenade launcher',rpg:'RPG',minigun:'minigun'};
+  const WEAPON_LOOT_LABEL = {pistol:'M17 pistol',rifle:'M4 rifle',grenade:'grenade launcher',rpg:'RPG',minigun:'minigun'};
   const LOOT_ICON_GLYPHS = {money:'$',armor:'ARM',grenade:'G',radio:'RAD',bandage:'MED',medicKit:'MED',pistol:'PST',rifle:'RIF',grenadeLauncher:'GL',rpg:'RPG',minigun:'MG'};
   // Twice the width and height gives four times the explorable area.
   const WORLD = { w: 4400, h: 3200 };
@@ -180,6 +181,14 @@
       const knifeWidth=Math.max(8,radius*.72),knifeHeight=Math.max(20,radius*1.8);
       ctx.drawImage(weaponSprites.knife,-knifeWidth/2,-knifeHeight/2,knifeWidth,knifeHeight);
       ctx.restore();
+    } else if(weapon==='pistol'&&weaponSprites.pistol.complete&&weaponSprites.pistol.naturalWidth) {
+      ctx.save();
+      ctx.translate(x+Math.cos(angle)*radius*.62,y+Math.sin(angle)*radius*.62);
+      ctx.rotate(angle);
+      ctx.imageSmoothingEnabled=false;
+      const pistolSize=radius*2.6;
+      ctx.drawImage(weaponSprites.pistol,-pistolSize/2,-pistolSize/2,pistolSize,pistolSize);
+      ctx.restore();
     } else if(weapon&&weapon!=='knife') {
       const length=weapon==='rpg'?radius*2.05:weapon==='minigun'?radius*1.8:radius*1.55;
       ctx.save();ctx.translate(x,y);ctx.rotate(angle);
@@ -249,7 +258,8 @@
 
   const prizeTable = [['rookie',100]];
   const weaponPrizes = [['pistol',50],['rifle',27],['grenade',15],['rpg',7.8],['minigun',0.2]];
-  const weaponName = {operator:'Operator\'s default',pistol:'FN-45 Pistol',rifle:'M4 Rifle',grenade:'Grenade Launcher',rpg:'RPG',minigun:'Minigun'};
+  const weaponName = {operator:'Operator\'s default',pistol:'M17',rifle:'M4 Rifle',grenade:'Grenade Launcher',rpg:'RPG',minigun:'Minigun'};
+  function weaponLabel(weapon) { return weapon==='pistol'?'M17':weapon.toUpperCase(); }
   const weaponRarity = {pistol:'common',rifle:'uncommon',grenade:'rare',rpg:'epic',minigun:'legendary'};
   function rollPrize(table) {
     const roll = Math.random() * 100;
@@ -644,10 +654,10 @@
     if(!player || player.weapon==='knife') return;
     if(player.reloadLeft>0) {
       player.reloadLeft=Math.max(0,player.reloadLeft-dt);
-      if(player.reloadLeft===0) { player.ammo=magazineSize(player.weapon); showToast(player.weapon.toUpperCase()+' reloaded.'); }
+      if(player.reloadLeft===0) { player.ammo=magazineSize(player.weapon); showToast(weaponLabel(player.weapon)+' reloaded.'); }
     } else if(player.ammo<=0) {
       player.reloadLeft=reloadDuration(player.weapon);
-      if(player.reloadLeft>0) showToast('Magazine empty - reloading '+player.weapon.toUpperCase()+'...');
+      if(player.reloadLeft>0) showToast('Magazine empty - reloading '+weaponLabel(player.weapon)+'...');
     }
   }
   function fireWeapon() {
@@ -826,7 +836,7 @@
     const tracker=$('statTracker'),trackerContent=boosts.length?boosts.map(([name,value])=>'<span class="stat-boost"><b>'+name+'</b> '+value+'</span>').join(''):'<span class="stat-empty">NO STAT BOOSTS</span>';
     if(tracker.dataset.content!==trackerContent){tracker.innerHTML=trackerContent;tracker.dataset.content=trackerContent;}
     $('xpFill').style.width=Math.min(100,xp/xpNext*100)+'%';$('levelText').textContent='LV '+level;
-    $('weaponHud').textContent=player.weapon.toUpperCase()+(player.weapon==='knife'?' · MELEE':player.reloadLeft>0?' · RELOADING '+player.reloadLeft.toFixed(1)+'s':' · '+player.ammo+'/'+magazineSize(player.weapon))+' · Q '+bombCount+' · F '+airstrikeCount;
+    $('weaponHud').textContent=weaponLabel(player.weapon)+(player.weapon==='knife'?' · MELEE':player.reloadLeft>0?' · RELOADING '+player.reloadLeft.toFixed(1)+'s':' · '+player.ammo+'/'+magazineSize(player.weapon))+' · Q '+bombCount+' · F '+airstrikeCount;
     const near=nearestThing();
     $('interactHint').textContent=near?(near.kind==='survivor'?(near.item.rescued?'ESCORT TO SAFEHOUSE':'E · Rescue survivor'):near.kind==='loot-bin'?(insideBuilding.building.lootClaimed?'MONEY BIN EMPTY':'E · Loot money bin'):near.kind==='exit'?'E · Exit building':near.item.supplies?'E · Enter '+near.item.name:'E · Search '+near.item.name):insideBuilding?'Explore inside · E to interact':'E · Search nearby';
   }
