@@ -83,10 +83,10 @@
     // Bert's sheet uses four directions (down, left, right, up), with four frames per row.
     const row=a<Math.PI/4||a>=Math.PI*7/4?2:a<Math.PI*3/4?0:a<Math.PI*5/4?1:a<Math.PI*7/4?3:2;
     const sprite=characterSprites.bert;
-    if(sprite.complete&&sprite.naturalWidth>=128&&sprite.naturalHeight>=128) {
+    if(sprite.complete&&sprite.naturalWidth>=100&&sprite.naturalHeight>=100) {
       const size=radius*3.25;
       ctx.globalAlpha=invulnerable?.58:1;
-      ctx.drawImage(sprite,(frame%4)*32,row*32,32,32,x-size/2,y-size/2,size,size);
+      ctx.drawImage(sprite,(frame%4)*25,row*25,25,25,x-size/2,y-size/2,size,size);
       ctx.globalAlpha=1;
     } else {
       ctx.fillStyle=invulnerable?'#f6a29a':color;ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();
