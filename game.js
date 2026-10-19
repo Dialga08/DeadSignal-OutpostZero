@@ -6,10 +6,13 @@
   const ctx = canvas.getContext('2d');
   const characterSprites = {bert: new Image()};
   characterSprites.bert.src = 'assets/characters/bert-chester.png?v=3';
-  const weaponSprites = {knife:new Image(),pistol:new Image(),rifle:new Image()};
+  const weaponSprites = {knife:new Image(),pistol:new Image(),rifle:new Image(),grenade:new Image()};
   weaponSprites.knife.src = 'assets/weapons/combat-knife.svg?v=1';
   weaponSprites.pistol.src = 'assets/weapons/m17-pistol.png?v=1';
   weaponSprites.rifle.src = 'assets/weapons/m4-rifle-transparent.png?v=1';
+  weaponSprites.grenade.src = 'assets/weapons/grenade-launcher.png?v=1';
+  const grenadeRoundSprite = new Image();
+  grenadeRoundSprite.src = 'assets/weapons/grenade-round.png?v=1';
   const bulletSprite = new Image();
   bulletSprite.src = 'assets/weapons/bullet-projectile.png?v=1';
   const weaponSlotSprite = new Image();
@@ -204,6 +207,14 @@
       ctx.imageSmoothingEnabled=false;
       const rifleWidth=weaponScale*58.8,rifleHeight=rifleWidth*weaponSprites.rifle.naturalHeight/weaponSprites.rifle.naturalWidth;
       ctx.drawImage(weaponSprites.rifle,-rifleWidth/2,-rifleHeight/2,rifleWidth,rifleHeight);
+      ctx.restore();
+    } else if(weapon==='grenade'&&weaponSprites.grenade.complete&&weaponSprites.grenade.naturalWidth) {
+      ctx.save();
+      ctx.translate(weaponX+Math.cos(angle)*weaponScale*3.6,y+Math.sin(angle)*weaponScale*3.6);
+      ctx.rotate(angle);
+      ctx.imageSmoothingEnabled=false;
+      const launcherWidth=weaponScale*55,launcherHeight=launcherWidth*weaponSprites.grenade.naturalHeight/weaponSprites.grenade.naturalWidth;
+      ctx.drawImage(weaponSprites.grenade,-launcherWidth/2,-launcherHeight/2,launcherWidth,launcherHeight);
       ctx.restore();
     } else if(weapon&&weapon!=='knife') {
       const length=weaponScale*(weapon==='rpg'?28.7:weapon==='minigun'?25.2:21.7);
@@ -704,7 +715,7 @@
     player.ammo-=cfg.count;
     for(let i=0;i<cfg.count;i++){
       const spread=(i-(cfg.count-1)/2)*.12, vx=dx*Math.cos(spread)-dy*Math.sin(spread),vy=dx*Math.sin(spread)+dy*Math.cos(spread);
-      bullets.push({x:player.x+vx*18,y:player.y+vy*18,vx:vx*cfg.speed,vy:vy*cfg.speed,damage:cfg.damage*player.attack,life:cfg.range/cfg.speed,radius:cfg.radius,kind:cfg.radius?'explosive':'bullet',usesBulletSprite:!cfg.radius&&usesBulletSprite(weapon)});
+      bullets.push({x:player.x+vx*18,y:player.y+vy*18,vx:vx*cfg.speed,vy:vy*cfg.speed,damage:cfg.damage*player.attack,life:cfg.range/cfg.speed,radius:cfg.radius,kind:cfg.radius?'explosive':'bullet',projectileType:weapon==='grenade'?'grenade':null,usesBulletSprite:!cfg.radius&&usesBulletSprite(weapon)});
     }
   }
   function damageZombie(z,damage) {
@@ -1051,7 +1062,10 @@
     }
     pickups.forEach(p=>{if(p.kind==='money'){drawMoneyIcon(ctx,p.x,p.y,15);}else if(p.kind==='ticket'){ctx.fillStyle='#4a2a78';ctx.fillRect(p.x-8,p.y-6,16,12);ctx.fillStyle='#e3c5ff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('T',p.x,p.y);ctx.textBaseline='alphabetic';}else{ctx.fillStyle='#e4ca68';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}});
     bullets.forEach(b=>{
-      if(b.usesBulletSprite&&bulletSprite.complete&&bulletSprite.naturalWidth){
+      if(b.projectileType==='grenade'&&grenadeRoundSprite.complete&&grenadeRoundSprite.naturalWidth){
+        const height=18,width=height*grenadeRoundSprite.naturalWidth/grenadeRoundSprite.naturalHeight;
+        ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx)+Math.PI/2);ctx.imageSmoothingEnabled=false;ctx.drawImage(grenadeRoundSprite,-width/2,-height/2,width,height);ctx.restore();
+      }else if(b.usesBulletSprite&&bulletSprite.complete&&bulletSprite.naturalWidth){
         const width=22,height=width*bulletSprite.naturalHeight/bulletSprite.naturalWidth;
         ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx)+Math.PI);ctx.drawImage(bulletSprite,-width/2,-height/2,width,height);ctx.restore();
       }else{ctx.fillStyle=b.kind==='explosive'?'#f3a45e':'#f1e6a8';ctx.beginPath();ctx.arc(b.x,b.y,b.kind==='explosive'?5:3,0,Math.PI*2);ctx.fill();}
