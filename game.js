@@ -442,7 +442,8 @@
     const nearX=Math.max(b.x,Math.min(x,b.x+b.w)),nearY=Math.max(b.y,Math.min(y,b.y+b.h));
     return Math.hypot(x-nearX,y-nearY)<r;
   }
-  function blockedByBuilding(x,y,r) { return buildings.some(b=>circleHitsBuilding(x,y,r,b))||cityBuildings.some(b=>circleHitsBuilding(x,y,r,b))||trees.some(t=>circleHitsBuilding(x,y,r,t))||parkFeatures.some(f=>circleHitsBuilding(x,y,r,f)); }
+  function treeObstacleRect(t) { return {x:t.x-15,y:t.y-29,w:48,h:59}; }
+  function blockedByBuilding(x,y,r) { return buildings.some(b=>circleHitsBuilding(x,y,r,b))||cityBuildings.some(b=>circleHitsBuilding(x,y,r,b))||trees.some(t=>circleHitsBuilding(x,y,r,treeObstacleRect(t)))||parkFeatures.some(f=>circleHitsBuilding(x,y,r,f)); }
   function segmentRectHitT(x1,y1,x2,y2,rect,padding=0) {
     const dx=x2-x1,dy=y2-y1;
     let minT=0,maxT=1;
@@ -456,7 +457,10 @@
   function bulletObstacleHitT(x1,y1,x2,y2,r=2) {
     let first=null;
     const consider=rect=>{const t=segmentRectHitT(x1,y1,x2,y2,rect,r);if(t!==null&&(first===null||t<first))first=t;};
-    buildings.forEach(consider);cityBuildings.forEach(consider);trees.forEach(consider);parkFeatures.forEach(consider);
+    buildings.forEach(b=>consider({x:b.x-8,y:b.y-8,w:b.w+16,h:b.h+16}));
+    cityBuildings.forEach(b=>consider({x:b.x-7,y:b.y-7,w:b.w+14,h:b.h+14}));
+    trees.forEach(t=>consider(treeObstacleRect(t)));
+    parkFeatures.forEach(f=>consider({x:f.x-4,y:f.y-4,w:f.w+8,h:f.h+9}));
     WRECKS.forEach(([x,y,angle])=>{
       const c=Math.abs(Math.cos(angle)),s=Math.abs(Math.sin(angle)),halfW=c*48+s*24,halfH=s*48+c*24;
       consider({x:x-halfW,y:y-halfH,w:halfW*2,h:halfH*2});
@@ -471,7 +475,7 @@
     const t=(-b-Math.sqrt(disc))/(2*a);return t>=0&&t<=1?t:null;
   }
   function pushOutOfBuildings(entity,r=entity.r) {
-    for(const b of [...cityBuildings,...buildings,...trees,...parkFeatures]) {
+    for(const b of [...cityBuildings,...buildings,...trees.map(treeObstacleRect),...parkFeatures]) {
       if(!circleHitsBuilding(entity.x,entity.y,r,b))continue;
       const nearX=Math.max(b.x,Math.min(entity.x,b.x+b.w)),nearY=Math.max(b.y,Math.min(entity.y,b.y+b.h));
       let dx=entity.x-nearX,dy=entity.y-nearY,d=Math.hypot(dx,dy);
