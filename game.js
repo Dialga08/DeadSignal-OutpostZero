@@ -27,6 +27,7 @@
   // Twice the width and height gives four times the explorable area.
   const WORLD = { w: 4400, h: 3200 };
   const CITY_CELL = 260;
+  const RENDER_PIXEL_RATIO = .5;
   const WRECKS = [[154,31,0],[523,291,.2],[1100,31,0],[1522,551,.2],[2050,1051,0],[780,811,.2],[2630,31,.1],[3150,291,-.2],[3910,551,.2],[2370,831,-.15],[3620,1091,.1],[2630,1351,.2],[4190,1611,-.2],[3150,1871,.15],[3910,2131,.1],[2370,2391,-.2],[3620,2651,.15],[154,2911,-.1],[1100,2651,.2],[1850,2911,-.2]];
   const DISTRICT_LAYOUT = [
     ['residential','downtown','park','suburbs','industrial'],
@@ -431,9 +432,9 @@
   }
 
   function resizeCanvas() {
-    const dpr=Math.min(window.devicePixelRatio||1,2), rect=canvas.getBoundingClientRect();
+    const dpr=Math.min(window.devicePixelRatio||1,2)*RENDER_PIXEL_RATIO, rect=canvas.getBoundingClientRect();
     canvas.width=Math.max(1,Math.floor(rect.width*dpr)); canvas.height=Math.max(1,Math.floor(rect.height*dpr));
-    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=false;
   }
   window.addEventListener('resize',resizeCanvas);
   function dimensions() { const r=canvas.getBoundingClientRect(); return {w:r.width,h:r.height}; }
@@ -843,7 +844,7 @@
     }
     effects.forEach(e=>e.life-=dt);effects=effects.filter(e=>e.life>0);
     const dim=dimensions(),viewW=dim.w/CAMERA_ZOOM,viewH=dim.h/CAMERA_ZOOM;
-    camera.x=Math.max(0,Math.min(WORLD.w-viewW,player.x-viewW/2));camera.y=Math.max(0,Math.min(WORLD.h-viewH,player.y-viewH/2));
+    camera.x=Math.round(Math.max(0,Math.min(WORLD.w-viewW,player.x-viewW/2)));camera.y=Math.round(Math.max(0,Math.min(WORLD.h-viewH,player.y-viewH/2)));
     updateHud();
   }
 
