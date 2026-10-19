@@ -50,6 +50,7 @@
     { id:'rookie', name:'Bert Chester', sprite:'bert', rarity:'Common', weapon:'knife', hp:85, attack:1.01, speed:98, color:'#c8d5cb', size:14, desc:'A steady recruit. Starts with a combat knife.' }
   ];
   const rarityClass = (s) => s.toLowerCase();
+  function terrainNoise(x,y,seed=0) { const v=Math.sin(x*127.1+y*311.7+seed*74.7)*43758.5453;return v-Math.floor(v); }
   const defaultSave = { coins:0, rankXp:0, unlocked:['rookie'], selected:'rookie', unlockedWeapons:['operator'], selectedWeapon:'operator', operatorRank:1, rankBonus:{hp:0,attack:0,speed:0}, bestWave:0 };
   let save = loadSave();
   let state = 'menu', lastFrame = 0, toastTimer = 0, rescueTimer = 50, levelChoices = null;
@@ -935,7 +936,10 @@
   function drawCityBlock(b) {
     const x=b.x+68,y=b.y+58,w=188,h=198,v=b.variation;
     if(drawBounds&&(x+w<drawBounds.left||x>drawBounds.right||y+h<drawBounds.top||y>drawBounds.bottom))return;
+    ctx.fillStyle='#30392e';ctx.fillRect(x-3,y-3,w+6,h+6);
     ctx.fillStyle=b.ground;ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='rgba(210,199,151,.22)';ctx.fillRect(x,y,w,3);ctx.fillRect(x,y,3,h);
+    ctx.fillStyle='rgba(25,34,28,.34)';ctx.fillRect(x+w-3,y+3,3,h-3);ctx.fillRect(x+3,y+h-3,w-3,3);
     if(b.district==='park') {
       ctx.fillStyle='rgba(35,83,46,.32)';ctx.fillRect(x+12,y+15,w-24,h-30);
       ctx.fillStyle='#92866a';ctx.fillRect(x+5,y+h*.47,w-10,8);
@@ -952,6 +956,27 @@
       ctx.fillStyle=b.district==='overgrown'?'rgba(33,83,42,.32)':'rgba(45,68,40,.23)';
       ctx.fillRect(x+15,y+16,34,22);ctx.fillRect(x+w-52,y+31,33,17);ctx.fillRect(x+34,y+h-45,28,20);
       if(v>.5){ctx.fillStyle='rgba(145,132,94,.44)';ctx.fillRect(x+w*.48,y+8,18,h-16);}
+    }
+    // Small clustered pixels break up the large ground fills and vary by district.
+    for(let i=0;i<18;i++) {
+      const px=x+10+Math.floor(terrainNoise(b.col,b.row,i+21)*(w-28));
+      const py=y+12+Math.floor(terrainNoise(b.row,b.col,i+39)*(h-30));
+      const patchW=4+Math.floor(terrainNoise(b.col+i,b.row,i+57)*11),patchH=2+Math.floor(terrainNoise(b.row+i,b.col,i+75)*5);
+      if(b.district==='park'||b.district==='overgrown'||b.district==='residential'||b.district==='suburbs') {
+        ctx.fillStyle=i%3===0?'#405c38':i%3===1?'#789052':'#8b8a53';
+        ctx.fillRect(px,py,patchW,patchH);
+        if(i%2===0){ctx.fillStyle='#344b34';ctx.fillRect(px+2,py-2,3,3);ctx.fillStyle='#a8a06a';ctx.fillRect(px+patchW-2,py-1,2,2);}
+      } else {
+        ctx.fillStyle=i%3===0?'#4b5149':i%3===1?'#7b745f':'#9a7953';
+        ctx.fillRect(px,py,patchW,patchH);
+        if(i%3===0){ctx.fillStyle='#303832';ctx.fillRect(px+2,py+patchH,patchW-3,2);}
+      }
+    }
+    if(['downtown','civic','industrial'].includes(b.district)) {
+      ctx.fillStyle='rgba(26,31,29,.48)';
+      for(let tileY=28;tileY<h-12;tileY+=34){ctx.fillRect(x+8,y+tileY,w-16,2);}
+      for(let tileX=38;tileX<w-12;tileX+=44){ctx.fillRect(x+tileX,y+12,2,h-24);}
+      ctx.fillStyle='rgba(188,174,133,.25)';ctx.fillRect(x+9,y+30,3,8);ctx.fillRect(x+w-22,y+h-45,5,3);
     }
     // A few chipped paving stones and leaf mats stop the terrain colors from reading as flat tiles.
     const chipX=x+18+Math.floor(v*91),chipY=y+26+Math.floor(v*113);
@@ -1047,6 +1072,10 @@
       if(rx+68<drawBounds.left||rx>drawBounds.right)continue;
       const top=Math.max(0,drawBounds.top),bottom=Math.min(WORLD.h,drawBounds.bottom),length=bottom-top;
       ctx.fillStyle='#484e48';ctx.fillRect(rx,top,62,length);
+      for(let yy=Math.floor(top/29)*29;yy<bottom;yy+=29) {
+        const patchX=rx+6+Math.floor(terrainNoise(rx,yy,3)*43),patchY=yy+Math.floor(terrainNoise(yy,rx,4)*15);
+        ctx.fillStyle=terrainNoise(rx,yy,5)>.5?'#50564e':'#424943';ctx.fillRect(patchX,patchY,5+Math.floor(terrainNoise(rx,yy,6)*8),3+Math.floor(terrainNoise(yy,rx,7)*3));
+      }
       ctx.fillStyle='#77766a';ctx.fillRect(rx-4,top,4,length);ctx.fillRect(rx+62,top,5,length);
       ctx.fillStyle='rgba(27,32,29,.34)';ctx.fillRect(rx+8,top,2,length);ctx.fillRect(rx+52,top,2,length);
       ctx.fillStyle='rgba(196,182,137,.72)';
@@ -1057,6 +1086,10 @@
       if(ry+59<drawBounds.top||ry>drawBounds.bottom)continue;
       const left=Math.max(0,drawBounds.left),right=Math.min(WORLD.w,drawBounds.right),length=right-left;
       ctx.fillStyle='#484e48';ctx.fillRect(left,ry,length,54);
+      for(let xx=Math.floor(left/31)*31;xx<right;xx+=31) {
+        const patchX=xx+Math.floor(terrainNoise(xx,ry,8)*16),patchY=ry+7+Math.floor(terrainNoise(ry,xx,9)*36);
+        ctx.fillStyle=terrainNoise(xx,ry,10)>.5?'#50564e':'#424943';ctx.fillRect(patchX,patchY,5+Math.floor(terrainNoise(xx,ry,11)*9),3+Math.floor(terrainNoise(ry,xx,12)*3));
+      }
       ctx.fillStyle='#77766a';ctx.fillRect(left,ry-4,length,4);ctx.fillRect(left,ry+54,length,5);
       ctx.fillStyle='rgba(27,32,29,.34)';ctx.fillRect(left,ry+8,length,2);ctx.fillRect(left,ry+44,length,2);
       ctx.fillStyle='rgba(196,182,137,.72)';
