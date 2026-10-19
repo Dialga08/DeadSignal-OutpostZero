@@ -27,6 +27,7 @@
   // Twice the width and height gives four times the explorable area.
   const WORLD = { w: 4400, h: 3200 };
   const CITY_CELL = 260;
+  const WRECKS = [[154,31,0],[523,291,.2],[1100,31,0],[1522,551,.2],[2050,1051,0],[780,811,.2],[2630,31,.1],[3150,291,-.2],[3910,551,.2],[2370,831,-.15],[3620,1091,.1],[2630,1351,.2],[4190,1611,-.2],[3150,1871,.15],[3910,2131,.1],[2370,2391,-.2],[3620,2651,.15],[154,2911,-.1],[1100,2651,.2],[1850,2911,-.2]];
   const DISTRICT_LAYOUT = [
     ['residential','downtown','park','suburbs','industrial'],
     ['industrial','overgrown','park','downtown','residential'],
@@ -442,6 +443,33 @@
     return Math.hypot(x-nearX,y-nearY)<r;
   }
   function blockedByBuilding(x,y,r) { return buildings.some(b=>circleHitsBuilding(x,y,r,b))||cityBuildings.some(b=>circleHitsBuilding(x,y,r,b))||trees.some(t=>circleHitsBuilding(x,y,r,t))||parkFeatures.some(f=>circleHitsBuilding(x,y,r,f)); }
+  function segmentRectHitT(x1,y1,x2,y2,rect,padding=0) {
+    const dx=x2-x1,dy=y2-y1;
+    let minT=0,maxT=1;
+    for(const [start,delta,min,max] of [[x1,dx,rect.x-padding,rect.x+rect.w+padding],[y1,dy,rect.y-padding,rect.y+rect.h+padding]]) {
+      if(Math.abs(delta)<1e-8){if(start<min||start>max)return null;continue;}
+      let a=(min-start)/delta,b=(max-start)/delta;if(a>b)[a,b]=[b,a];
+      minT=Math.max(minT,a);maxT=Math.min(maxT,b);if(minT>maxT)return null;
+    }
+    return minT;
+  }
+  function bulletObstacleHitT(x1,y1,x2,y2,r=2) {
+    let first=null;
+    const consider=rect=>{const t=segmentRectHitT(x1,y1,x2,y2,rect,r);if(t!==null&&(first===null||t<first))first=t;};
+    buildings.forEach(consider);cityBuildings.forEach(consider);trees.forEach(consider);parkFeatures.forEach(consider);
+    WRECKS.forEach(([x,y,angle])=>{
+      const c=Math.abs(Math.cos(angle)),s=Math.abs(Math.sin(angle)),halfW=c*48+s*24,halfH=s*48+c*24;
+      consider({x:x-halfW,y:y-halfH,w:halfW*2,h:halfH*2});
+    });
+    return first;
+  }
+  function bulletZombieHit(x1,y1,x2,y2,z) {
+    const dx=x2-x1,dy=y2-y1,fx=x1-z.x,fy=y1-z.y;
+    const a=dx*dx+dy*dy,c=fx*fx+fy*fy-(z.r+5)*(z.r+5);
+    if(c<=0)return 0;if(a<1e-8)return null;
+    const b=2*(fx*dx+fy*dy),disc=b*b-4*a*c;if(disc<0)return null;
+    const t=(-b-Math.sqrt(disc))/(2*a);return t>=0&&t<=1?t:null;
+  }
   function pushOutOfBuildings(entity,r=entity.r) {
     for(const b of [...cityBuildings,...buildings,...trees,...parkFeatures]) {
       if(!circleHitsBuilding(entity.x,entity.y,r,b))continue;
@@ -791,10 +819,14 @@
         z.attackTimer=Math.max(0,z.attackTimer-dt);
       });
       bullets.forEach(b=>{
-        b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
-        if(b.life<=0)return;
-        const hit=zombies.find(z=>!z.dead&&Math.hypot(z.x-b.x,z.y-b.y)<z.r+5);
-        if(hit){if(b.radius){effects.push({type:'blast',x:b.x,y:b.y,life:.4,max:.4,r:b.radius});zombies.forEach(z=>{if(Math.hypot(z.x-b.x,z.y-b.y)<b.radius)damageZombie(z,b.damage);});}else damageZombie(hit,b.damage);b.life=0;}
+        b.life-=dt;if(b.life<=0)return;
+        const x1=b.x,y1=b.y,x2=x1+b.vx*dt,y2=y1+b.vy*dt;
+        const obstacleT=bulletObstacleHitT(x1,y1,x2,y2,Math.max(2,b.radius?3:1.5));
+        let hit=null,hitT=null;
+        zombies.forEach(z=>{if(z.dead)return;const t=bulletZombieHit(x1,y1,x2,y2,z);if(t!==null&&(hitT===null||t<hitT)){hit=z;hitT=t;}});
+        if(obstacleT!==null&&(hitT===null||obstacleT<=hitT)){b.x=x1+(x2-x1)*obstacleT;b.y=y1+(y2-y1)*obstacleT;if(b.radius){effects.push({type:'blast',x:b.x,y:b.y,life:.4,max:.4,r:b.radius});zombies.forEach(z=>{if(Math.hypot(z.x-b.x,z.y-b.y)<b.radius)damageZombie(z,b.damage);});}b.life=0;return;}
+        if(hitT!==null){b.x=x1+(x2-x1)*hitT;b.y=y1+(y2-y1)*hitT;if(b.radius){effects.push({type:'blast',x:b.x,y:b.y,life:.4,max:.4,r:b.radius});zombies.forEach(z=>{if(Math.hypot(z.x-b.x,z.y-b.y)<b.radius)damageZombie(z,b.damage);});}else damageZombie(hit,b.damage);b.life=0;return;}
+        b.x=x2;b.y=y2;
       });
       bullets=bullets.filter(b=>b.life>0);zombies=zombies.filter(z=>!z.dead);
       if(survivor?.following){const follow=Math.min(1,dt*3);moveCircle(survivor,(player.x-25-survivor.x)*follow,(player.y+20-survivor.y)*follow,8);if(Math.hypot(player.x-survivor.shelter.x,player.y-survivor.shelter.y)<95){survivor=null;credits+=75;saveNow();showToast('Survivor safely escorted! +$75.','money');}}
@@ -1036,7 +1068,7 @@
       ctx.restore();
       if(i%8===0){ctx.strokeStyle='#353a34';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+9,y-5);ctx.lineTo(x+21,y+5);ctx.lineTo(x+31,y+1);ctx.stroke();}
     }
-    [[154,31,0],[523,291,.2],[1100,31,0],[1522,551,.2],[2050,1051,0],[780,811,.2],[2630,31,.1],[3150,291,-.2],[3910,551,.2],[2370,831,-.15],[3620,1091,.1],[2630,1351,.2],[4190,1611,-.2],[3150,1871,.15],[3910,2131,.1],[2370,2391,-.2],[3620,2651,.15],[154,2911,-.1],[1100,2651,.2],[1850,2911,-.2]].forEach(([x,y,a],i)=>{
+    WRECKS.forEach(([x,y,a],i)=>{
       if(x<drawBounds.left-60||x>drawBounds.right+60||y<drawBounds.top-60||y>drawBounds.bottom+60)return;
       ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.scale(1.65,1.65);
       // Larger, damaged silhouettes make the abandoned cars easy to spot at a glance.
