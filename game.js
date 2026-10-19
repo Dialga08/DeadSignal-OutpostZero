@@ -37,7 +37,7 @@
     overgrown:{ground:['#4c6742','#536d43','#5a7043'],building:.18,trees:4},
     civic:{ground:['#687452','#6d754f','#5f6d4c'],building:.38,trees:1}
   };
-  const CAMERA_ZOOM = 1.65;
+  const CAMERA_ZOOM = 2.0;
   const SAVE_KEY = 'deadSignalSaveV1';
   const rosterData = [
     { id:'rookie', name:'Bert Chester', sprite:'bert', rarity:'Common', weapon:'knife', hp:85, attack:1.01, speed:98, color:'#c8d5cb', size:14, desc:'A steady recruit. Starts with a combat knife.' }
