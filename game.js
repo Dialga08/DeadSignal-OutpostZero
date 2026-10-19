@@ -161,13 +161,15 @@
   }
   function drawHuman(x,y,angle,frame,radius,color,invulnerable,weapon) {
     const a=((angle%(Math.PI*2))+(Math.PI*2))%(Math.PI*2);
-    const weaponX=x+radius*1.25;
     // Bert's sheet uses four directions (down, left, right, up), with four frames per row.
     const row=a<Math.PI/4||a>=Math.PI*7/4?2:a<Math.PI*3/4?0:a<Math.PI*5/4?1:a<Math.PI*7/4?3:2;
     const sprite=characterSprites.bert;
     const frameWidth=19,frameHeight=21,frameX=10+(frame%4)*frameWidth,frameY=4+row*frameHeight;
+    const characterHeight=radius*3.25*frameHeight/frameWidth;
+    const weaponScale=characterHeight/50;
+    const weaponX=x+weaponScale*17.45;
     if(sprite.complete&&sprite.naturalWidth>=86&&sprite.naturalHeight>=88) {
-      const size=radius*3.25,height=size*frameHeight/frameWidth;
+      const size=radius*3.25,height=characterHeight;
       ctx.globalAlpha=invulnerable?.58:1;
       ctx.drawImage(sprite,frameX,frameY,frameWidth,frameHeight,x-size/2,y-height/2,size,height);
       ctx.globalAlpha=1;
@@ -177,37 +179,37 @@
     if(weapon==='knife'&&weaponSprites.knife.complete&&weaponSprites.knife.naturalWidth) {
       // The supplied knife artwork points upward; rotate it to follow the aim direction.
       ctx.save();
-      ctx.translate(weaponX+Math.cos(angle)*radius*.58,y+Math.sin(angle)*radius*.58);
+      ctx.translate(weaponX+Math.cos(angle)*weaponScale*8.12,y+Math.sin(angle)*weaponScale*8.12);
       ctx.rotate(angle+Math.PI/2);
       ctx.imageSmoothingEnabled=false;
-      const knifeWidth=Math.max(8,radius*.72),knifeHeight=Math.max(20,radius*1.8);
+      const knifeWidth=weaponScale*10.08,knifeHeight=weaponScale*25.2;
       ctx.drawImage(weaponSprites.knife,-knifeWidth/2,-knifeHeight/2,knifeWidth,knifeHeight);
       ctx.restore();
     } else if(weapon==='pistol'&&weaponSprites.pistol.complete&&weaponSprites.pistol.naturalWidth) {
       ctx.save();
-      ctx.translate(weaponX+Math.cos(angle)*radius*.62,y+Math.sin(angle)*radius*.62);
+      ctx.translate(weaponX+Math.cos(angle)*weaponScale*8.68,y+Math.sin(angle)*weaponScale*8.68);
       ctx.rotate(angle);
       ctx.imageSmoothingEnabled=false;
-      const pistolSize=radius*2.6;
+      const pistolSize=weaponScale*36.4;
       ctx.drawImage(weaponSprites.pistol,-pistolSize/2,-pistolSize/2,pistolSize,pistolSize);
       ctx.restore();
     } else if(weapon==='rifle'&&weaponSprites.rifle.complete&&weaponSprites.rifle.naturalWidth) {
       ctx.save();
-      ctx.translate(weaponX+Math.cos(angle)*radius*.52,y+Math.sin(angle)*radius*.52);
+      ctx.translate(weaponX+Math.cos(angle)*weaponScale*7.28,y+Math.sin(angle)*weaponScale*7.28);
       ctx.rotate(angle);
       // The supplied sprite faces left, so mirror it to point along the aim direction.
       ctx.scale(-1,1);
       ctx.imageSmoothingEnabled=false;
-      const rifleWidth=radius*4.2,rifleHeight=rifleWidth*weaponSprites.rifle.naturalHeight/weaponSprites.rifle.naturalWidth;
+      const rifleWidth=weaponScale*58.8,rifleHeight=rifleWidth*weaponSprites.rifle.naturalHeight/weaponSprites.rifle.naturalWidth;
       ctx.drawImage(weaponSprites.rifle,-rifleWidth/2,-rifleHeight/2,rifleWidth,rifleHeight);
       ctx.restore();
     } else if(weapon&&weapon!=='knife') {
-      const length=weapon==='rpg'?radius*2.05:weapon==='minigun'?radius*1.8:radius*1.55;
+      const length=weaponScale*(weapon==='rpg'?28.7:weapon==='minigun'?25.2:21.7);
       ctx.save();ctx.translate(weaponX,y);ctx.rotate(angle);
-      ctx.fillStyle='#202923';ctx.fillRect(2,-radius*.28,length,radius*.38);
-      ctx.fillStyle='#596157';ctx.fillRect(5,-radius*.2,length*.68,radius*.18);
-      ctx.fillStyle='#151b18';ctx.fillRect(length+1,-radius*.2,Math.max(3,radius*.35),radius*.2);
-      ctx.fillStyle='#343c35';ctx.fillRect(radius*.38,radius*.08,radius*.32,radius*.52);
+      ctx.fillStyle='#202923';ctx.fillRect(weaponScale*2,-weaponScale*3.92,length,weaponScale*5.32);
+      ctx.fillStyle='#596157';ctx.fillRect(weaponScale*5,-weaponScale*2.8,length*.68,weaponScale*2.52);
+      ctx.fillStyle='#151b18';ctx.fillRect(length+weaponScale,-weaponScale*2.8,weaponScale*4.9,weaponScale*2.8);
+      ctx.fillStyle='#343c35';ctx.fillRect(weaponScale*5.32,weaponScale*1.12,weaponScale*4.48,weaponScale*7.28);
       ctx.restore();
     }
   }
