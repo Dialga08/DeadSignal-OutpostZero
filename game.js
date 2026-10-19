@@ -10,6 +10,8 @@
   weaponSprites.knife.src = 'assets/weapons/combat-knife.svg?v=1';
   weaponSprites.pistol.src = 'assets/weapons/m17-pistol.png?v=1';
   weaponSprites.rifle.src = 'assets/weapons/m4-rifle-transparent.png?v=1';
+  const bulletSprite = new Image();
+  bulletSprite.src = 'assets/weapons/bullet-projectile.png?v=1';
   const weaponSlotSprite = new Image();
   weaponSlotSprite.src = 'assets/gun-slot-machine.png?v=2';
   const characterSlotSprite = new Image();
@@ -274,6 +276,10 @@
   const weaponPrizes = [['pistol',50],['rifle',27],['grenade',15],['rpg',7.8],['minigun',0.2]];
   const weaponName = {operator:'Operator\'s default',pistol:'M17',rifle:'M4 Rifle',grenade:'Grenade Launcher',rpg:'RPG',minigun:'Minigun'};
   function weaponLabel(weapon) { return weapon==='pistol'?'M17':weapon==='rifle'?'M4':weapon.toUpperCase(); }
+  function usesBulletSprite(weapon) {
+    const id=String(weapon||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    return id==='ar'||id.includes('pistol')||id.includes('smg')||id.includes('shotgun')||id.includes('rifle')||(id.includes('assault')&&id.includes('rifle'));
+  }
   const weaponRarity = {pistol:'common',rifle:'uncommon',grenade:'rare',rpg:'epic',minigun:'legendary'};
   function rollPrize(table) {
     const roll = Math.random() * 100;
@@ -698,7 +704,7 @@
     player.ammo-=cfg.count;
     for(let i=0;i<cfg.count;i++){
       const spread=(i-(cfg.count-1)/2)*.12, vx=dx*Math.cos(spread)-dy*Math.sin(spread),vy=dx*Math.sin(spread)+dy*Math.cos(spread);
-      bullets.push({x:player.x+vx*18,y:player.y+vy*18,vx:vx*cfg.speed,vy:vy*cfg.speed,damage:cfg.damage*player.attack,life:cfg.range/cfg.speed,radius:cfg.radius,kind:cfg.radius?'explosive':'bullet'});
+      bullets.push({x:player.x+vx*18,y:player.y+vy*18,vx:vx*cfg.speed,vy:vy*cfg.speed,damage:cfg.damage*player.attack,life:cfg.range/cfg.speed,radius:cfg.radius,kind:cfg.radius?'explosive':'bullet',usesBulletSprite:!cfg.radius&&usesBulletSprite(weapon)});
     }
   }
   function damageZombie(z,damage) {
@@ -1044,7 +1050,12 @@
       if(survivor.following){ctx.strokeStyle='rgba(182,213,156,.45)';ctx.beginPath();ctx.moveTo(survivor.x,survivor.y);ctx.lineTo(survivor.shelter.x,survivor.shelter.y);ctx.stroke();}
     }
     pickups.forEach(p=>{if(p.kind==='money'){drawMoneyIcon(ctx,p.x,p.y,15);}else if(p.kind==='ticket'){ctx.fillStyle='#4a2a78';ctx.fillRect(p.x-8,p.y-6,16,12);ctx.fillStyle='#e3c5ff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('T',p.x,p.y);ctx.textBaseline='alphabetic';}else{ctx.fillStyle='#e4ca68';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}});
-    bullets.forEach(b=>{ctx.fillStyle=b.kind==='explosive'?'#f3a45e':'#f1e6a8';ctx.beginPath();ctx.arc(b.x,b.y,b.kind==='explosive'?5:3,0,Math.PI*2);ctx.fill();});
+    bullets.forEach(b=>{
+      if(b.usesBulletSprite&&bulletSprite.complete&&bulletSprite.naturalWidth){
+        const width=22,height=width*bulletSprite.naturalHeight/bulletSprite.naturalWidth;
+        ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx)+Math.PI);ctx.drawImage(bulletSprite,-width/2,-height/2,width,height);ctx.restore();
+      }else{ctx.fillStyle=b.kind==='explosive'?'#f3a45e':'#f1e6a8';ctx.beginPath();ctx.arc(b.x,b.y,b.kind==='explosive'?5:3,0,Math.PI*2);ctx.fill();}
+    });
     zombies.forEach(z=>{
       if(z.boss){ctx.fillStyle='rgba(234,115,76,.2)';ctx.beginPath();ctx.arc(z.x,z.y,z.r+8,0,Math.PI*2);ctx.fill();}
       const angle=Math.atan2(player.y-z.y,player.x-z.x);
