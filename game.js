@@ -50,7 +50,10 @@
     { id:'rookie', name:'Bert Chester', sprite:'bert', rarity:'Common', weapon:'knife', hp:85, attack:1.01, speed:98, color:'#c8d5cb', size:14, desc:'A steady recruit. Starts with a combat knife.' }
   ];
   const rarityClass = (s) => s.toLowerCase();
-  function terrainNoise(x,y,seed=0) { const v=Math.sin(x*127.1+y*311.7+seed*74.7)*43758.5453;return v-Math.floor(v); }
+  function terrainNoise(x,y,seed=0) {
+    let h=(Math.imul(x|0,374761393)+Math.imul(y|0,668265263)+Math.imul(seed|0,1442695041))|0;
+    h=Math.imul(h^(h>>>13),1274126177);h^=h>>>16;return (h>>>0)/4294967296;
+  }
   const defaultSave = { coins:0, rankXp:0, unlocked:['rookie'], selected:'rookie', unlockedWeapons:['operator'], selectedWeapon:'operator', operatorRank:1, rankBonus:{hp:0,attack:0,speed:0}, bestWave:0 };
   let save = loadSave();
   let state = 'menu', lastFrame = 0, toastTimer = 0, rescueTimer = 50, levelChoices = null;
@@ -958,18 +961,19 @@
       if(v>.5){ctx.fillStyle='rgba(145,132,94,.44)';ctx.fillRect(x+w*.48,y+8,18,h-16);}
     }
     // Small clustered pixels break up the large ground fills and vary by district.
-    for(let i=0;i<18;i++) {
+    for(let i=0;i<34;i++) {
       const px=x+10+Math.floor(terrainNoise(b.col,b.row,i+21)*(w-28));
       const py=y+12+Math.floor(terrainNoise(b.row,b.col,i+39)*(h-30));
-      const patchW=4+Math.floor(terrainNoise(b.col+i,b.row,i+57)*11),patchH=2+Math.floor(terrainNoise(b.row+i,b.col,i+75)*5);
+      const patchW=8+Math.floor(terrainNoise(b.col+i,b.row,i+57)*15),patchH=4+Math.floor(terrainNoise(b.row+i,b.col,i+75)*8);
       if(b.district==='park'||b.district==='overgrown'||b.district==='residential'||b.district==='suburbs') {
-        ctx.fillStyle=i%3===0?'#405c38':i%3===1?'#789052':'#8b8a53';
-        ctx.fillRect(px,py,patchW,patchH);
-        if(i%2===0){ctx.fillStyle='#344b34';ctx.fillRect(px+2,py-2,3,3);ctx.fillStyle='#a8a06a';ctx.fillRect(px+patchW-2,py-1,2,2);}
+        ctx.fillStyle='#344631';ctx.fillRect(px,py+patchH-2,patchW+3,4);
+        ctx.fillStyle=i%3===0?'#405c38':i%3===1?'#789052':'#8b8a53';ctx.fillRect(px+1,py,patchW,patchH);
+        ctx.fillStyle=i%2===0?'#a2a064':'#526e42';ctx.fillRect(px+3,py+1,4,3);ctx.fillRect(px+patchW-5,py+patchH-3,5,2);
+        if(i%3===0){ctx.fillStyle='#303f30';ctx.fillRect(px+patchW/2,py-4,4,5);ctx.fillStyle='#a29a5d';ctx.fillRect(px+patchW/2+4,py-3,3,2);}
       } else {
-        ctx.fillStyle=i%3===0?'#4b5149':i%3===1?'#7b745f':'#9a7953';
-        ctx.fillRect(px,py,patchW,patchH);
-        if(i%3===0){ctx.fillStyle='#303832';ctx.fillRect(px+2,py+patchH,patchW-3,2);}
+        ctx.fillStyle='#303832';ctx.fillRect(px,py+patchH-2,patchW+2,4);
+        ctx.fillStyle=i%3===0?'#55594e':i%3===1?'#8c8066':'#a17a52';ctx.fillRect(px+1,py,patchW,patchH);
+        ctx.fillStyle='#b5a581';ctx.fillRect(px+3,py+1,4,2);ctx.fillStyle='#3d443d';ctx.fillRect(px+patchW-4,py+patchH,4,2);
       }
     }
     if(['downtown','civic','industrial'].includes(b.district)) {
@@ -1072,9 +1076,11 @@
       if(rx+68<drawBounds.left||rx>drawBounds.right)continue;
       const top=Math.max(0,drawBounds.top),bottom=Math.min(WORLD.h,drawBounds.bottom),length=bottom-top;
       ctx.fillStyle='#484e48';ctx.fillRect(rx,top,62,length);
-      for(let yy=Math.floor(top/29)*29;yy<bottom;yy+=29) {
-        const patchX=rx+6+Math.floor(terrainNoise(rx,yy,3)*43),patchY=yy+Math.floor(terrainNoise(yy,rx,4)*15);
-        ctx.fillStyle=terrainNoise(rx,yy,5)>.5?'#50564e':'#424943';ctx.fillRect(patchX,patchY,5+Math.floor(terrainNoise(rx,yy,6)*8),3+Math.floor(terrainNoise(yy,rx,7)*3));
+      for(let yy=Math.floor(top/19)*19;yy<bottom;yy+=19) {
+        const patchX=rx+5+Math.floor(terrainNoise(rx,yy,3)*45),patchY=yy+Math.floor(terrainNoise(yy,rx,4)*13),patchW=7+Math.floor(terrainNoise(rx,yy,6)*13),patchH=4+Math.floor(terrainNoise(yy,rx,7)*5);
+        ctx.fillStyle='#353b36';ctx.fillRect(patchX-2,patchY+patchH-1,patchW+3,3);
+        ctx.fillStyle=terrainNoise(rx,yy,5)>.5?'#596057':'#3d4540';ctx.fillRect(patchX,patchY,patchW,patchH);
+        ctx.fillStyle='#77796e';ctx.fillRect(patchX+2,patchY,4,2);
       }
       ctx.fillStyle='#77766a';ctx.fillRect(rx-4,top,4,length);ctx.fillRect(rx+62,top,5,length);
       ctx.fillStyle='rgba(27,32,29,.34)';ctx.fillRect(rx+8,top,2,length);ctx.fillRect(rx+52,top,2,length);
@@ -1086,9 +1092,11 @@
       if(ry+59<drawBounds.top||ry>drawBounds.bottom)continue;
       const left=Math.max(0,drawBounds.left),right=Math.min(WORLD.w,drawBounds.right),length=right-left;
       ctx.fillStyle='#484e48';ctx.fillRect(left,ry,length,54);
-      for(let xx=Math.floor(left/31)*31;xx<right;xx+=31) {
-        const patchX=xx+Math.floor(terrainNoise(xx,ry,8)*16),patchY=ry+7+Math.floor(terrainNoise(ry,xx,9)*36);
-        ctx.fillStyle=terrainNoise(xx,ry,10)>.5?'#50564e':'#424943';ctx.fillRect(patchX,patchY,5+Math.floor(terrainNoise(xx,ry,11)*9),3+Math.floor(terrainNoise(ry,xx,12)*3));
+      for(let xx=Math.floor(left/19)*19;xx<right;xx+=19) {
+        const patchX=xx+Math.floor(terrainNoise(xx,ry,8)*14),patchY=ry+5+Math.floor(terrainNoise(ry,xx,9)*37),patchW=7+Math.floor(terrainNoise(xx,ry,11)*13),patchH=4+Math.floor(terrainNoise(ry,xx,12)*5);
+        ctx.fillStyle='#353b36';ctx.fillRect(patchX-2,patchY+patchH-1,patchW+3,3);
+        ctx.fillStyle=terrainNoise(xx,ry,10)>.5?'#596057':'#3d4540';ctx.fillRect(patchX,patchY,patchW,patchH);
+        ctx.fillStyle='#77796e';ctx.fillRect(patchX+2,patchY,4,2);
       }
       ctx.fillStyle='#77766a';ctx.fillRect(left,ry-4,length,4);ctx.fillRect(left,ry+54,length,5);
       ctx.fillStyle='rgba(27,32,29,.34)';ctx.fillRect(left,ry+8,length,2);ctx.fillRect(left,ry+44,length,2);
