@@ -669,7 +669,8 @@
   }
   function aimTarget() {
     const mouseWorld={x:pointer.x/CAMERA_ZOOM+camera.x,y:pointer.y/CAMERA_ZOOM+camera.y};
-    if(!autoAim && (pointer.down||touch.fire)) return mouseWorld;
+    // Manual aim always tracks the cursor, even between shots. R can opt into auto-aim.
+    if(!autoAim) return mouseWorld;
     let target=null, d=Infinity;
     zombies.forEach(z=>{const n=Math.hypot(player.x-z.x,player.y-z.y);if(n<d){d=n;target=z;}});
     return target||mouseWorld;
