@@ -161,7 +161,7 @@
   }
   function drawHuman(x,y,angle,frame,radius,color,invulnerable,weapon) {
     const a=((angle%(Math.PI*2))+(Math.PI*2))%(Math.PI*2);
-    const weaponX=x+radius*.55;
+    const weaponX=x+radius*1.25;
     // Bert's sheet uses four directions (down, left, right, up), with four frames per row.
     const row=a<Math.PI/4||a>=Math.PI*7/4?2:a<Math.PI*3/4?0:a<Math.PI*5/4?1:a<Math.PI*7/4?3:2;
     const sprite=characterSprites.bert;
